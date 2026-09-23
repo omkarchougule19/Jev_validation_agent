@@ -88,3 +88,33 @@ choices; this file is just a chronological record of what happened.
   OpenRouter's public pricing list, "faster" is hard-confirmed but
   "cheaper" isn't, and the report doesn't claim it. Raw results saved to
   `results/report.json`.
+- Wrote `README.md` with the real pitch, the actual measured comparison
+  table, the honest cost caveat, setup instructions, and a pointer back to
+  plan/decisions/logs for anyone curious about the build process.
+- `git init` + initial commit (root commit `9634dd2`) — clean stage, `.env`
+  and `results/` correctly excluded via `.gitignore`. All 13 tests re-run
+  and passing right before the commit.
+- Sent the finished code to the same critique agent from the idea-selection
+  stage (resumed via SendMessage, told explicitly to re-read the actual
+  files fresh rather than rely on memory). Findings:
+  - Code matches what plan.md/decisions.md/logs.md claim — no discrepancies.
+  - **Required fix:** the README's results section didn't carry the
+    test-set-difficulty caveat that already existed in `testset.py`'s
+    docstring and `decisions.md` — "same accuracy" read as a stronger claim
+    than the underlying (deliberately easy) test cases actually support.
+  - **Recommended fix:** zero error handling around any API call — a
+    timeout/rate-limit/auth blip would crash `guard()` uncaught, a real gap
+    for something pitched as a guardrail.
+  - Minor: `make_baseline_client()` only checked `OPENROUTER_API_KEY`, not
+    the same tolerant fallback `make_client()` uses.
+  - Confirmed clean: baseline comparison isn't strawmanned (same
+    thresholds, live-checked pricing, honest cost disclosure), scoring math
+    in `report.py` is sound.
+- Applied all three fixes: added the caveat paragraph to README (pointing
+  to the format check as the more informative result, since both judges
+  tied there but missed different individual cases); added try/except
+  handling in `guard.py` with a documented `on_error="flag"` (default) /
+  `"block"` policy — a failed check no longer crashes the whole call or
+  stops other checks from running; aligned `make_baseline_client()`'s key
+  lookup with `client.py`'s. Added 3 new tests for the error-handling path.
+  All 16 tests passing.

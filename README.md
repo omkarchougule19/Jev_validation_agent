@@ -47,6 +47,13 @@ print(overall)  # "pass" | "flag" | "block"
 Each check returns `pass`, `flag` (worth a second look), or `block`. The
 overall verdict is the worst of whichever checks you ran.
 
+**If a check's API call fails** (timeout, rate limit, auth error), it
+doesn't crash `guard()` — a guardrail that takes down your app on its own
+infrastructure hiccup is worse than one that degrades gracefully. It
+defaults to flagging that check for human review (`on_error="flag"`);
+pass `on_error="block"` for a stricter fail-closed policy if that's the
+right call for your use case.
+
 ## Does it actually work? (measured, not claimed)
 
 Built a small test set of 80 made-up examples — some answers deliberately
@@ -64,7 +71,18 @@ a fair comparison of the *judge*, not the policy.
 False-alarm rate was 0% for both judges on every check — neither one
 wrongly flagged a genuinely good answer.
 
-**Same accuracy, ~3x faster, every time.** Even the misses on the format
+**Read the accuracy numbers with this in mind:** the on-topic and
+contradiction test cases are deliberately obvious — wildly unrelated
+answers, 10x-wrong numbers, wrong cities — not subtle near-misses (a
+partially-relevant answer, a detail that's *slightly* off). A 100%/100%
+tie on cases this clear-cut mostly shows both judges can catch the easy
+stuff; it doesn't prove Jev holds up on harder, more ambiguous calls.
+The **format check is the more informative one** here, since JSON syntax
+errors range from obvious to genuinely tricky, and it's also the one
+check where the two judges' catch rate actually matched *and* their
+individual misses differed — a more honest signal than a clean sweep.
+
+**Same accuracy on this test set, ~3x faster, every time.** Even the misses on the format
 check are an honest, interesting result: Jev and the baseline missed
 *different* tricky near-valid-JSON cases (Jev missed unquoted keys, the
 baseline missed a trailing comma; both missed single-quoted JSON) — not

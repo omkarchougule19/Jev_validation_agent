@@ -31,7 +31,7 @@ class BaselineCall:
 
 
 def make_baseline_client() -> OpenAI:
-    api_key = os.environ.get("OPENROUTER_API_KEY")
+    api_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("OPENROUTER_JEV_API_KEY")
     return OpenAI(api_key=api_key, base_url="https://openrouter.ai/api/v1")
 
 

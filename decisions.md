@@ -56,6 +56,38 @@ already tested and worked reliably and fast. Using it for the baseline
 judge too keeps the whole project on one provider, with one known-working
 integration pattern.
 
+## guard() fails gracefully on API errors, defaulting to "flag"
+
+**Decided:** wrapped each check's API call in `guard()` with a try/except —
+a failed call (timeout, rate limit, auth error) no longer crashes the whole
+`guard()` call. It's recorded as a check result with `verdict="flag"` by
+default (surfaced for human review, not silently passed or silently
+blocked), with `on_error="block"` available for a stricter fail-closed
+policy.
+
+**Why:** flagged by the same critique agent that reviewed the finished
+code — a guardrail with zero error handling that crashes on its own
+provider's hiccup is a real gap for something pitched as "makes your app
+safer." Kept it minimal (one try/except in `guard.py`, not spread across
+every check function) rather than building a bigger retry/circuit-breaker
+system this project doesn't need.
+
+## README's results section carries the test-set-difficulty caveat
+
+**Decided:** added an explicit paragraph to the README's results section
+stating that the on-topic and contradiction test cases are deliberately
+obvious (wildly unrelated answers, 10x-wrong numbers), so the 100%/100%
+tie between Jev and the baseline shouldn't be read as proof Jev holds up
+on subtler, harder calls. Pointed to the format check (where both judges
+tied at 80% but missed *different* individual cases) as the more
+informative result.
+
+**Why:** the same caveat already existed in `testset.py`'s docstring and
+`decisions.md`, but the critique agent correctly pointed out it hadn't
+made it into the README — the one place a skeptical technical reviewer
+would actually read before judging the claim. A caveat that only exists in
+code comments doesn't protect the claim where it's actually being made.
+
 ## Code stays minimal — no async, no decorator, no plugin framework
 
 **Decided:** `guard()` is a plain synchronous function, checks are plain
