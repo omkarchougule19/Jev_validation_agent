@@ -1,5 +1,9 @@
 # Jev-Guard
 
+[![Tests](https://github.com/omkarchougule19/Jev_validation_agent/actions/workflows/tests.yml/badge.svg)](https://github.com/omkarchougule19/Jev_validation_agent/actions/workflows/tests.yml)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 A fast, cheap way to double-check an LLM's answer before you show it to a
 user — using **Jev** (TypeSafe AI's decision-only model) instead of asking
 a second full LLM to grade the first one.
@@ -56,37 +60,59 @@ right call for your use case.
 
 ## Does it actually work? (measured, not claimed)
 
-Built a small test set of 80 made-up examples — some answers deliberately
-good, some deliberately bad — and ran every one through both Jev-Guard and
-a normal "ask an LLM to grade it" baseline (`gpt-4o-mini` via OpenRouter),
-scored against the exact same pass/flag/block thresholds for both, so it's
-a fair comparison of the *judge*, not the policy.
+Built a test set of 100 made-up examples across the three checks and ran
+every one through both Jev-Guard and a normal "ask an LLM to grade it"
+baseline (`gpt-4o-mini` via OpenRouter), scored against the exact same
+pass/flag/block thresholds for both, so it's a fair comparison of the
+*judge*, not the policy.
+
+![Latency and catch-rate comparison](assets/comparison.png)
 
 | Check | Jev catch rate | Baseline catch rate | Jev latency (median) | Baseline latency (median) |
 |---|---|---|---|---|
-| On-topic | 100% | 100% | 237ms | 698ms |
-| Contradicts source | 100% | 100% | 253ms | 912ms |
-| Right format | 80% | 80% | 260ms | 783ms |
+| On-topic | 100% | 100% | 210ms | 1,027ms |
+| Contradicts source | 100% | 100% | 217ms | 614ms |
+| Right format | 80% | 80% | 192ms | 748ms |
 
 False-alarm rate was 0% for both judges on every check — neither one
 wrongly flagged a genuinely good answer.
 
-**Read the accuracy numbers with this in mind:** the on-topic and
-contradiction test cases are deliberately obvious — wildly unrelated
-answers, 10x-wrong numbers, wrong cities — not subtle near-misses (a
-partially-relevant answer, a detail that's *slightly* off). A 100%/100%
-tie on cases this clear-cut mostly shows both judges can catch the easy
-stuff; it doesn't prove Jev holds up on harder, more ambiguous calls.
-The **format check is the more informative one** here, since JSON syntax
-errors range from obvious to genuinely tricky, and it's also the one
-check where the two judges' catch rate actually matched *and* their
-individual misses differed — a more honest signal than a clean sweep.
+**This time the test set includes a genuinely hard tier, on purpose.** An
+earlier version of this test set was flagged (correctly) as too easy —
+wildly unrelated answers and 10x-wrong numbers are simple for any
+reasonable judge to catch, so a tie there doesn't prove much. 20 of the
+100 cases now are deliberately subtle near-misses instead: a
+partially-relevant answer that never actually answers the question, a
+transposed digit, a date that's off by a year, a price that's close but
+wrong. Broken out separately:
 
-**Same accuracy on this test set, ~3x faster, every time.** Even the misses on the format
-check are an honest, interesting result: Jev and the baseline missed
-*different* tricky near-valid-JSON cases (Jev missed unquoted keys, the
-baseline missed a trailing comma; both missed single-quoted JSON) — not
-identical blind spots, and not a cherry-picked result.
+| Check | Difficulty | n | Jev catch rate | Baseline catch rate |
+|---|---|---|---|---|
+| On-topic | easy | 15 | 100% | 100% |
+| On-topic | **hard** | 10 | **100%** | **100%** |
+| Contradicts source | easy | 15 | 100% | 100% |
+| Contradicts source | **hard** | 10 | **100%** | **100%** |
+
+Both judges held up even on the hard tier. That's a real result, not a
+guaranteed one: it was entirely possible Jev caught the easy cases but
+missed the subtle ones, and it didn't.
+
+**Is the tie actually meaningful, or just noise?** Ran a bootstrap
+confidence interval on the catch-rate gap for each check (5,000
+resamples). On-topic and contradiction: observed gap 0%, 95% CI [0%, 0%]
+— genuinely identical, not just close. Format: observed gap 0%, 95% CI
+[-30%, +30%] — a real tie, but the CI is wide because there are only 10
+bad format cases, so don't read too much precision into that one number.
+Full numbers from `python -m jev_guard.report`.
+
+Even the misses on the format check are an honest, interesting result:
+Jev and the baseline missed *different* tricky near-valid-JSON cases (Jev
+missed unquoted keys, the baseline missed a trailing comma; both missed
+single-quoted JSON) — not identical blind spots, and not a cherry-picked
+result.
+
+**Same accuracy on this test set, including the hard cases, ~3x faster,
+every time.**
 
 **One honest caveat:** Jev used *more* input tokens per call than the
 baseline (~300 vs. ~65). Jev isn't listed in OpenRouter's public pricing
@@ -94,7 +120,8 @@ catalog, so there's no way to independently confirm a $ cost for it —
 "faster" is a hard, measured number here; "cheaper" isn't claimed, on
 purpose, because it isn't verified.
 
-Raw results from the run: `results/report.json`. Re-run it yourself with
+Raw results from the run: `results/report.json` (gitignored, regenerate
+it yourself). Re-run everything, including the chart above, with
 `python -m jev_guard.report`.
 
 ## Setup
@@ -118,9 +145,11 @@ src/jev_guard/
 ├── checks.py    # the 3 checks + their pass/flag/block thresholds
 ├── guard.py     # guard() — runs the checks you ask for, rolls up a verdict
 ├── baseline.py  # the "ask a full LLM to grade it" comparison judge
-├── testset.py   # the 80 made-up test examples
-└── report.py    # runs the test set through both, prints the comparison
+├── testset.py   # the 100 made-up test examples (easy + hard tiers)
+└── report.py    # runs the test set through both, scores it, charts it
 tests/           # unit tests for the decision logic (no API calls needed)
+assets/          # the comparison chart shown above
+.github/workflows/tests.yml  # CI: runs the test suite on every push
 ```
 
 ## Why it's built this way
@@ -128,4 +157,5 @@ tests/           # unit tests for the decision logic (no API calls needed)
 This is deliberately small on purpose: a made-up test set instead of a
 real dataset, three checks instead of a plugin framework, one provider
 (OpenRouter) instead of several. See `plan.md` for the reasoning behind
-the scope.
+the scope, and for what's planned next but not built yet (a live demo,
+proper packaging).

@@ -2,3 +2,5 @@ typesafe-sdk
 openai
 python-dotenv
 pytest
+matplotlib
+numpy

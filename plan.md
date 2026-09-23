@@ -122,3 +122,48 @@ jev-guard/
 - Exact pass, flag, and block thresholds for each check. Start with
   reasonable defaults, then adjust once we see real results from the test
   set.
+
+## What got added after v1 shipped
+
+Once the working version was up, the test set was expanded to 100
+examples (adding a genuinely hard tier: subtle near-misses, not just
+obvious good and bad answers), and a few things were added to make the
+project's claims stronger and easier to trust at a glance:
+
+- **CI** (`.github/workflows/tests.yml`): the test suite runs on every
+  push, with a badge in the README.
+- **A chart** (`assets/comparison.png`): latency and catch rate, side by
+  side, instead of asking someone to read a table.
+- **A hard difficulty tier** in the test set: 20 of the 100 cases are
+  deliberately subtle (a transposed digit, a date off by a year, an
+  answer that sounds relevant but never actually answers the question),
+  not just obviously good or bad. This is a direct response to an honest
+  critique that the original test set was too easy for a tie to mean
+  much.
+- **A bootstrap confidence interval** on the catch-rate gap between Jev
+  and the baseline, so "they tied" comes with a number showing whether
+  that's a real tie or just noise at this sample size, the same kind of
+  rigor the very first (abandoned) version of this whole idea was going
+  for, but cheap to add here since it's just resampling existing results,
+  not making more API calls.
+- **A LICENSE file** (MIT) to back the badge, since a badge pointing at
+  nothing isn't worth much.
+
+## Future ideas (not built, on purpose)
+
+Two bigger ideas came up that are real upgrades but didn't fit "keep the
+code minimal" for this pass. Noting them here so they don't get lost,
+not because they're planned for a specific date:
+
+- **A live interactive demo.** A small hosted page where someone can
+  paste in a question, an answer, and optional context, and watch
+  Jev-Guard verdict it in real time, alongside the comparison stats. This
+  is the single biggest "show, don't tell" upgrade available, since
+  right now proving it works means reading a README instead of clicking
+  something. Would need a small backend (FastAPI is the natural fit,
+  already in the toolbox) and somewhere free to host it.
+- **Proper packaging.** Turning this into something installable with
+  `pip install jev-guard` (a real `pyproject.toml`, published to PyPI or
+  at least installable straight from GitHub) instead of "clone the repo
+  and import from `src/`". Makes it read as a real, reusable library
+  instead of a project folder.
