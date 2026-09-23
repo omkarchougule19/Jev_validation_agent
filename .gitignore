@@ -6,3 +6,4 @@ results/
 *.egg-info/
 decisions.md
 logs.md
+.portfolio_temp/
