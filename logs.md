@@ -122,3 +122,10 @@ choices; this file is just a chronological record of what happened.
   `main`). `gh` CLI wasn't installed locally, so the user created the empty
   repo directly and gave the URL rather than having it created
   automatically.
+- User asked to remove Claude as a contributor from commit messages.
+  Rewrote all 3 existing commits (git filter-branch, stripped the
+  Co-Authored-By trailer) and force-pushed to main — the user confirmed
+  this was fine despite already being on GitHub, since they're the only
+  one who'd touched the repo. Commit hashes changed (9634dd2/765da26/
+  93c9571 -> b8bbe10/7c0b37a/0882dc3). No attribution trailer on commits
+  going forward either.
