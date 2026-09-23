@@ -4,3 +4,5 @@ __pycache__/
 .env
 results/
 *.egg-info/
+decisions.md
+logs.md

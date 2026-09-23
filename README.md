@@ -125,9 +125,7 @@ tests/           # unit tests for the decision logic (no API calls needed)
 
 ## Why it's built this way
 
-`plan.md`, `decisions.md`, and `logs.md` in this repo track the actual
-build process — what was decided, why, and what happened along the way
-(including an earlier, more ambitious project that got scrapped over API
-rate-limit issues, which is part of why this one is deliberately small:
-a made-up test set instead of a real dataset, three checks instead of a
-plugin framework, one provider (OpenRouter) instead of several).
+This is deliberately small on purpose: a made-up test set instead of a
+real dataset, three checks instead of a plugin framework, one provider
+(OpenRouter) instead of several. See `plan.md` for the reasoning behind
+the scope.
