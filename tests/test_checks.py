@@ -1,8 +1,3 @@
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-
 from jev_guard.checks import contradiction_verdict, format_verdict, on_topic_verdict
 
 

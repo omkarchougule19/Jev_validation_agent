@@ -1,0 +1,10 @@
+.venv/
+.git/
+.env
+results/
+assets/
+tests/
+.pytest_cache/
+.portfolio_temp/
+decisions.md
+logs.md

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jev-guard"
+version = "0.1.0"
+description = "Fast, cheap LLM output validation using Jev instead of an LLM judge"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+authors = [{ name = "Omkar Chougule" }]
+dependencies = ["typesafe-sdk"]
+
+[project.optional-dependencies]
+report = ["openai", "python-dotenv", "matplotlib", "numpy"]
+demo = ["fastapi", "uvicorn", "python-dotenv"]
+dev = ["pytest", "httpx"]
+
+[project.urls]
+Repository = "https://github.com/omkarchougule19/Jev_validation_agent"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+jev_guard = ["demo/static/*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

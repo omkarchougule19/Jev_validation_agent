@@ -1,6 +1,3 @@
-typesafe-sdk
-openai
-python-dotenv
-pytest
-matplotlib
-numpy
+# Everything: the library, the report script, the demo, and test tools.
+# For just the library: pip install .
+-e .[report,demo,dev]

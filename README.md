@@ -35,8 +35,7 @@ Three checks, each one Jev call:
 | **Right format** | Is the answer in the structure you asked for (e.g. valid JSON)? | `Choice` |
 
 ```python
-from jev_guard.client import make_client
-from jev_guard.guard import guard
+from jev_guard import guard, make_client
 
 client = make_client()
 overall, results = guard(
@@ -109,7 +108,10 @@ Even the misses on the format check are an honest, interesting result:
 Jev and the baseline missed *different* tricky near-valid-JSON cases (Jev
 missed unquoted keys, the baseline missed a trailing comma; both missed
 single-quoted JSON) — not identical blind spots, and not a cherry-picked
-result.
+result. Spot-checking the live demo afterwards turned up more
+format misses (a missing closing brace, a missing comma, and this time
+a trailing comma too, all passed as valid JSON), so treat the format
+check as a soft signal and use a real parser when you need strict JSON.
 
 **Same accuracy on this test set, including the hard cases, ~3x faster,
 every time.**
@@ -124,18 +126,47 @@ Raw results from the run: `results/report.json` (gitignored, regenerate
 it yourself). Re-run everything, including the chart above, with
 `python -m jev_guard.report`.
 
-## Setup
+## Install
+
+```bash
+pip install git+https://github.com/omkarchougule19/Jev_validation_agent
+```
+
+That installs just the library (its only dependency is `typesafe-sdk`).
+Set `OPENROUTER_API_KEY` in your environment and you're ready to call
+`guard()`. Both Jev and the baseline judge are reached through
+[OpenRouter](https://openrouter.ai), so one API key covers both, with no
+TypeSafe-specific account needed.
+
+Optional extras: `[report]` for re-running the benchmark and chart,
+`[demo]` for the live demo page, `[dev]` for the tests.
+
+### Working on the repo itself
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # or .venv\Scripts\activate on Windows
-pip install -r requirements.txt
+pip install -r requirements.txt  # editable install with every extra
 cp .env.example .env  # fill in OPENROUTER_API_KEY
+python -m pytest
 ```
 
-Both Jev and the baseline judge are reached through
-[OpenRouter](https://openrouter.ai) — one API key covers both, no
-TypeSafe-specific account needed.
+## Live demo
+
+A single page where you paste a question, an answer, and optional source
+context, and watch Jev-Guard verdict it in real time, with the benchmark
+numbers alongside.
+
+```bash
+pip install "jev-guard[demo] @ git+https://github.com/omkarchougule19/Jev_validation_agent"
+python -m jev_guard.demo  # then open http://localhost:8000
+```
+
+To host it, use the included `Dockerfile` (it listens on `$PORT`, 7860 by
+default, which suits Hugging Face Spaces or Render) and set
+`OPENROUTER_API_KEY` as a secret on the host. A hosted copy spends your
+OpenRouter credits, so inputs are capped at 4,000 characters and each IP
+gets 10 checks a minute.
 
 ## Project layout
 
@@ -146,9 +177,12 @@ src/jev_guard/
 ├── guard.py     # guard() — runs the checks you ask for, rolls up a verdict
 ├── baseline.py  # the "ask a full LLM to grade it" comparison judge
 ├── testset.py   # the 100 made-up test examples (easy + hard tiers)
-└── report.py    # runs the test set through both, scores it, charts it
+├── report.py    # runs the test set through both, scores it, charts it
+└── demo/        # FastAPI app + single-page UI for the live demo
 tests/           # unit tests for the decision logic (no API calls needed)
 assets/          # the comparison chart shown above
+pyproject.toml   # packaging: pip-installable, with optional extras
+Dockerfile       # container for hosting the demo
 .github/workflows/tests.yml  # CI: runs the test suite on every push
 ```
 
@@ -157,5 +191,4 @@ assets/          # the comparison chart shown above
 This is deliberately small on purpose: a made-up test set instead of a
 real dataset, three checks instead of a plugin framework, one provider
 (OpenRouter) instead of several. See `plan.md` for the reasoning behind
-the scope, and for what's planned next but not built yet (a live demo,
-proper packaging).
+the scope.

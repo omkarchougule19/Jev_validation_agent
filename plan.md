@@ -149,21 +149,31 @@ project's claims stronger and easier to trust at a glance:
 - **A LICENSE file** (MIT) to back the badge, since a badge pointing at
   nothing isn't worth much.
 
-## Future ideas (not built, on purpose)
+## Packaging and live demo (built after that)
 
-Two bigger ideas came up that are real upgrades but didn't fit "keep the
-code minimal" for this pass. Noting them here so they don't get lost,
-not because they're planned for a specific date:
+The two ideas that were parked as "future work" have now been built:
 
-- **A live interactive demo.** A small hosted page where someone can
-  paste in a question, an answer, and optional context, and watch
-  Jev-Guard verdict it in real time, alongside the comparison stats. This
-  is the single biggest "show, don't tell" upgrade available, since
-  right now proving it works means reading a README instead of clicking
-  something. Would need a small backend (FastAPI is the natural fit,
-  already in the toolbox) and somewhere free to host it.
-- **Proper packaging.** Turning this into something installable with
-  `pip install jev-guard` (a real `pyproject.toml`, published to PyPI or
-  at least installable straight from GitHub) instead of "clone the repo
-  and import from `src/`". Makes it read as a real, reusable library
-  instead of a project folder.
+- **Proper packaging.** A real `pyproject.toml`, so the library installs
+  straight from GitHub with
+  `pip install git+https://github.com/omkarchougule19/Jev_validation_agent`.
+  The core install needs only `typesafe-sdk`. Everything else is an
+  optional extra: `[report]` for the benchmark and chart, `[demo]` for the
+  demo page, `[dev]` for the tests. `guard` and `make_client` can now be
+  imported straight from `jev_guard`. Publishing to PyPI itself is left
+  for later, since it needs a PyPI account and the name `jev-guard`
+  claimed there.
+- **A live interactive demo.** `python -m jev_guard.demo` starts a small
+  FastAPI app with one page: paste in an answer plus any of question,
+  context, or expected format, and see each check's verdict and latency,
+  with the benchmark table next to it. Because a hosted copy spends the
+  host's OpenRouter credits, inputs are capped at 4,000 characters and
+  each IP gets 10 checks a minute. A `Dockerfile` is included for hosting
+  (Hugging Face Spaces or Render both work on a free tier). Actually
+  putting it online needs the owner's account on one of those, so that
+  last step is still open.
+
+One thing the demo turned up: spot checks found more format misses than
+the benchmark did (a missing closing brace, a missing comma, and a
+trailing comma all passed as valid JSON). The README and the demo page
+now both say plainly that the format check is a soft signal, not a
+replacement for a real parser.

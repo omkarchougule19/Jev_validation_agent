@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jev-Guard Demo</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --border: #e2e2dc;
+    --accent: #2f5bd3; --pass: #1f8a4c; --flag: #b7791f; --block: #c53030;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #141413; --card: #1e1e1c; --text: #ececea; --muted: #9a9a94; --border: #33332f;
+            --accent: #7b9cf0; --pass: #4cc17e; --flag: #e0a948; --block: #f07070; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 880px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { margin: 0 0 4px; font-size: 26px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+  label { display: block; font-weight: 600; margin: 14px 0 4px; font-size: 14px; }
+  label span { font-weight: 400; color: var(--muted); }
+  textarea, input { width: 100%; padding: 9px 10px; border: 1px solid var(--border); border-radius: 6px;
+                    background: var(--bg); color: var(--text); font: inherit; resize: vertical; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+  button { font: inherit; border-radius: 6px; padding: 8px 14px; cursor: pointer; border: 1px solid var(--border);
+           background: var(--card); color: var(--text); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button:disabled { opacity: .6; cursor: wait; }
+  .examples { color: var(--muted); font-size: 13px; }
+  .verdict { font-size: 22px; font-weight: 700; text-transform: uppercase; }
+  .pass { color: var(--pass); } .flag { color: var(--flag); } .block { color: var(--block); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .table-wrap { overflow-x: auto; }
+  .error { color: var(--block); }
+  .muted { color: var(--muted); font-size: 13px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Jev-Guard</h1>
+  <p class="sub">Checks an LLM answer with <b>Jev</b>, a small decision model, instead of a second full LLM.
+    Fill in only the fields for the checks you want to run.</p>
+
+  <div class="card">
+    <label for="answer">LLM answer <span>(required)</span></label>
+    <textarea id="answer" rows="3"></textarea>
+    <label for="question">Question <span>(runs the on-topic check)</span></label>
+    <textarea id="question" rows="2"></textarea>
+    <label for="context">Source context <span>(runs the contradiction check)</span></label>
+    <textarea id="context" rows="3"></textarea>
+    <label for="format">Expected format <span>(runs the format check, e.g. JSON)</span></label>
+    <input id="format" type="text">
+    <div class="row">
+      <button class="primary" id="run">Run checks</button>
+      <span class="examples">Try:</span>
+      <button data-ex="good">Good answer</button>
+      <button data-ex="offtopic">Off-topic</button>
+      <button data-ex="contra">Subtle contradiction</button>
+      <button data-ex="json">Not JSON</button>
+    </div>
+  </div>
+
+  <div class="card" id="out" hidden></div>
+
+  <div class="card">
+    <b>Measured on a 100-case test set</b> <span class="muted">(Jev vs. gpt-4o-mini as the judge, same thresholds)</span>
+    <div class="table-wrap"><table>
+      <tr><th>Check</th><th class="num">Jev catch rate</th><th class="num">Baseline catch rate</th>
+          <th class="num">Jev median latency</th><th class="num">Baseline median latency</th></tr>
+      <tr><td>On-topic</td><td class="num">100%</td><td class="num">100%</td><td class="num">210 ms</td><td class="num">1,027 ms</td></tr>
+      <tr><td>Contradicts source</td><td class="num">100%</td><td class="num">100%</td><td class="num">217 ms</td><td class="num">614 ms</td></tr>
+      <tr><td>Right format</td><td class="num">80%</td><td class="num">80%</td><td class="num">192 ms</td><td class="num">748 ms</td></tr>
+    </table></div>
+    <p class="muted">No false alarms from either judge on any check. Format is the weakest check: small syntax slips
+      (a trailing comma, a missing brace) can get through, so pair it with a real parser for strict JSON.
+      <a href="https://github.com/omkarchougule19/Jev_validation_agent">Source and methodology</a></p>
+  </div>
+</main>
+<script>
+const EXAMPLES = {
+  good: { answer: "The Eiffel Tower is 330 metres tall.", question: "How tall is the Eiffel Tower?",
+          context: "The Eiffel Tower in Paris stands 330 metres (1,083 ft) tall.", format: "" },
+  offtopic: { answer: "Paris has a lovely café culture and many museums.", question: "How tall is the Eiffel Tower?",
+              context: "", format: "" },
+  contra: { answer: "The Eiffel Tower was completed in 1887.", question: "",
+            context: "The Eiffel Tower was completed in 1889 for the World's Fair.", format: "" },
+  json: { answer: "name: Ada, age: 36", question: "", context: "", format: "JSON" },
+};
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+document.querySelectorAll("[data-ex]").forEach(b => b.onclick = () => {
+  const ex = EXAMPLES[b.dataset.ex];
+  $("answer").value = ex.answer; $("question").value = ex.question;
+  $("context").value = ex.context; $("format").value = ex.format;
+});
+
+$("run").onclick = async () => {
+  const out = $("out"), btn = $("run");
+  btn.disabled = true; btn.textContent = "Checking…";
+  out.hidden = false; out.innerHTML = '<span class="muted">Running checks…</span>';
+  try {
+    const res = await fetch("/api/guard", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answer: $("answer").value, question: $("question").value,
+                             context: $("context").value, expected_format: $("format").value }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const msg = typeof data.detail === "string" ? data.detail : "Invalid input (the answer is required, fields max 4,000 characters).";
+      out.innerHTML = `<span class="error">${esc(msg)}</span>`;
+      return;
+    }
+    const rows = data.results.map(r => `<tr><td>${esc(r.name)}</td>
+      <td class="${esc(r.verdict)}"><b>${esc(r.verdict)}</b></td><td>${esc(r.detail)}</td>
+      <td class="num">${r.latency_ms} ms</td></tr>`).join("");
+    out.innerHTML = `<div>Overall: <span class="verdict ${esc(data.overall)}">${esc(data.overall)}</span>
+      <span class="muted">&nbsp;in ${data.total_ms} ms total</span></div>
+      <div class="table-wrap"><table><tr><th>Check</th><th>Verdict</th><th>Detail</th><th class="num">Latency</th></tr>${rows}</table></div>`;
+  } catch (e) {
+    out.innerHTML = `<span class="error">Request failed: ${esc(e.message)}</span>`;
+  } finally {
+    btn.disabled = false; btn.textContent = "Run checks";
+  }
+};
+</script>
+</body>
+</html>
