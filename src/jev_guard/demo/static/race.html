@@ -66,7 +66,15 @@
   .score { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 14px; font-weight: 700; }
   .score span { font-variant-numeric: tabular-nums; }
   .s-right { color: var(--right); } .s-wrong { color: var(--wrong); } .s-flag { color: color-mix(in srgb, var(--flag) 75%, var(--text)); }
+  .s-cost { color: var(--text); }
   .s-note { color: var(--muted); font-weight: 400; margin-left: auto; }
+  .pricing { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+  .cost-line { margin-top: 6px; font-size: 14px; }
+  .place .cost-line b { display: inline; font-size: inherit; }
+  .verdicts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  @media (max-width: 560px) { .verdicts { grid-template-columns: 1fr; } }
+  .verdict-box { border-radius: 12px; padding: 12px 14px; background: var(--bg); font-size: 15px; }
+  .verdict-box .big { font-size: 22px; font-weight: 800; display: block; }
 
   .overlay { position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 20; }
   .count { font-size: 140px; font-weight: 900; color: var(--accent); text-shadow: 0 6px 0 color-mix(in srgb, var(--accent) 30%, transparent);
@@ -108,6 +116,9 @@
     <span><span class="sw" style="background:var(--flag);color:var(--on-flag)">?</span>unsure, sent to a human</span>
     <span class="muted">Tap a filled box to see that answer.</span>
   </div>
+  <p class="pricing" id="pricing">💰 Costs are projected at list prices: Jev $0.042 per 1M input tokens (output is free, via OpenRouter);
+    GPT-OSS 120B $0.15 per 1M input and $0.60 per 1M output tokens (Groq's paid tier, where its reasoning counts as output).
+    The race itself runs on Groq's free tier.</p>
 
   <button class="go" id="start">▶ Start the race</button>
   <div id="warn" class="warn" hidden></div>
@@ -152,19 +163,24 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;",
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let cases = [], lanes = {}, es = null, ended = false, winner = null;
 
+function usd(x) { return "$" + (x < 0.01 ? x.toFixed(6) : x.toFixed(2)); }
+function perMillion(l) { return l.count ? l.cost / l.count * 1e6 : null; }
+function money(x) { return "$" + x.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
 function kind(ev) { return ev.verdict === "flag" ? "flag" : ev.correct ? "right" : "wrong"; }
 
 function makeLane(name) {
   const root = $("#lane-" + name);
   return { name, root, timer: root.querySelector(".timer"), fill: root.querySelector(".fill"), runner: root.querySelector(".runner"),
            boxes: root.querySelector(".boxes"), score: root.querySelector(".score"), badge: root.querySelector(".badge"),
-           started: 0, raf: 0, done: false, finalMs: null, count: 0, right: 0, wrong: 0, flag: 0, results: [], note: "" };
+           started: 0, raf: 0, done: false, finalMs: null, count: 0, right: 0, wrong: 0, flag: 0, cost: 0, results: [], note: "" };
 }
 
 function renderScore(l) {
   const secs = l.finalMs != null ? l.finalMs / 1000 : l.started ? (performance.now() - l.started) / 1000 : 0;
   const rate = l.count && secs ? `${(l.count / secs).toFixed(1)} checks/s` : "";
   l.score.innerHTML = `<span class="s-right">✓ ${l.right}</span><span class="s-wrong">✗ ${l.wrong}</span><span class="s-flag">? ${l.flag}</span>` +
+    `<span class="s-cost" title="Projected cost of this race so far, at list prices">💰 ${usd(l.cost)}</span>` +
     `<span class="s-note">${esc(l.note || `${l.count} / ${N}${rate ? " · " + rate : ""}`)}</span>`;
 }
 
@@ -258,6 +274,12 @@ function handle(ev) {
   }
   if (ev.type === "start") {
     cases = ev.cases;
+    if (ev.prices) {
+      const p = ev.prices;
+      $("#pricing").textContent = `💰 Costs are projected at list prices: Jev $${p.jev.input} per 1M input tokens` +
+        (p.jev.output ? `, $${p.jev.output} per 1M output` : " (output is free, via OpenRouter)") +
+        `; GPT-OSS 120B $${p.baseline.input} per 1M input and $${p.baseline.output} per 1M output tokens (Groq's paid tier, where its reasoning counts as output). The race itself runs on Groq's free tier.`;
+    }
     for (const l of Object.values(lanes)) { l.started = performance.now(); tick(l); }
     return;
   }
@@ -266,7 +288,7 @@ function handle(ev) {
   const l = lanes[ev.lane];
   if (ev.type === "result") {
     const k = kind(ev);
-    l.count++; l[k]++; l.results[ev.i] = ev;
+    l.count++; l[k]++; l.cost += ev.cost || 0; l.results[ev.i] = ev;
     const b = l.boxes.children[ev.i];
     b.className = "box pop " + k;
     b.textContent = { right: "✓", wrong: "✗", flag: "?" }[k];
@@ -313,11 +335,25 @@ function summarize() {
       <span class="medal">${l.finalMs == null ? "🚧" : idx === 0 ? "🥇" : "🥈"}</span>
       <b>${esc(NAMES[l.name])}</b>
       ${l.finalMs != null ? `${(l.finalMs / 1000).toFixed(2)} s for ${l.count} answers` : `${l.count} of ${N} answers`}
-      <div class="muted">✓ ${l.right} right · ✗ ${l.wrong} wrong · ? ${l.flag} sent to a human</div></div>`;
+      <div class="muted">✓ ${l.right} right · ✗ ${l.wrong} wrong · ? ${l.flag} sent to a human</div>
+      <div class="cost-line">💰 <b>${usd(l.cost)}</b> this race` +
+      (perMillion(l) != null ? ` · <b>${money(perMillion(l))}</b> per 1M checks` : "") + `</div></div>`;
   const s = $("#summary");
-  s.innerHTML = `<h2>${head}</h2><div class="places">${order.map(place).join("")}</div>`;
+  s.innerHTML = `<h2>${head}</h2><div class="places">${order.map(place).join("")}</div>${costVerdict()}`;
   s.hidden = false;
   s.scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block: "nearest" });
+}
+
+function costVerdict() {
+  const j = perMillion(lanes.jev), b = perMillion(lanes.baseline);
+  if (j == null || b == null) return "";
+  const cheap = j <= b ? ["Jev", j, b] : ["GPT-OSS 120B", b, j];
+  const ratio = cheap[2] / cheap[1];
+  return `<div class="verdicts">
+    <div class="verdict-box"><span class="big">💰 ${ratio < 1.1 ? "About the same cost" : `${cheap[0]} is ${ratio.toFixed(1)}× cheaper`}</span>
+      per check, at list prices.</div>
+    <div class="verdict-box"><span class="big">📈 At 100K checks a day</span>
+      (3M a month) that's about ${money(j * 3)} a month for Jev vs ${money(b * 3)} for GPT-OSS 120B.</div></div>`;
 }
 
 function showDetail(i) {

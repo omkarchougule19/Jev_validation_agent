@@ -29,6 +29,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from dotenv import load_dotenv
 
+from jev_guard import baseline, client
 from jev_guard.baseline import BASELINE_MODEL, BaselineRateLimited, make_baseline_client, run_baseline_case
 from jev_guard.checks import run_jev_case
 from jev_guard.client import make_client
@@ -60,11 +61,12 @@ def _run_case(jev_client, baseline_client, case: dict) -> dict:
         "jev_latency_ms": jev.latency_ms,
         "jev_input_tokens": jev.input_tokens,
         "jev_output_tokens": jev.output_tokens,
+        "jev_cost_usd": client.cost_usd(jev.input_tokens, jev.output_tokens),
         "baseline_verdict": b_verdict,
         "baseline_latency_ms": b.latency_ms,
         "baseline_input_tokens": b.input_tokens,
         "baseline_output_tokens": b.output_tokens,
-        "baseline_cost_usd": 0.0,  # Groq free tier
+        "baseline_cost_usd": baseline.cost_usd(b.input_tokens, b.output_tokens),  # at Groq's paid price; free tier here
         "baseline_model": BASELINE_MODEL,
         "run_date": date.today().isoformat(),
     }
@@ -185,6 +187,13 @@ def main() -> None:
         check_rows = [r for r in rows if r["check"] == check]
         ci = bootstrap_catch_rate_gap_ci(check_rows)
         print(f"  {check}: Jev - Baseline catch rate = {ci['observed_gap']:+.0%}  (95% CI [{ci['ci_low']:+.0%}, {ci['ci_high']:+.0%}])  significant={ci['significant']}")
+
+    jev_cost = sum(r["jev_cost_usd"] for r in rows) / len(rows)
+    base_cost = sum(r["baseline_cost_usd"] for r in rows) / len(rows)
+    print("
+=== Cost per check (list prices) ===")
+    print(f"  Jev-Guard : ${jev_cost:.7f}  (${jev_cost * 1e6:,.2f} per 1M checks)")
+    print(f"  Baseline  : ${base_cost:.7f}  (${base_cost * 1e6:,.2f} per 1M checks, at Groq's paid price)")
 
     _make_chart(rows, CHART_PATH)
     print(f"\nWrote raw results to {OUT_PATH}")

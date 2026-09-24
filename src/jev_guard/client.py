@@ -32,6 +32,12 @@ from typesafe_sdk import Choice, Noul, Score, TypeSafeClient
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api"  # SDK appends /v1/systemone itself
 OPENROUTER_MODEL = "typesafe/jev-1.13"
+# OpenRouter list price for Jev (checked 2026-09-24): input tokens only, output is free.
+PRICE_PER_TOKEN = {"input": 0.042e-6, "output": 0.0}
+
+
+def cost_usd(input_tokens: int, output_tokens: int) -> float:
+    return input_tokens * PRICE_PER_TOKEN["input"] + output_tokens * PRICE_PER_TOKEN["output"]
 
 T = TypeVar("T")
 

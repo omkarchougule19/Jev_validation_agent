@@ -29,6 +29,13 @@ from jev_guard.checks import contradiction_verdict, format_verdict, on_topic_ver
 BASELINE_MODEL = os.environ.get("BASELINE_MODEL", "openai/gpt-oss-120b")
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 MAX_COMPLETION_TOKENS = 150  # Groq reserves prompt + this against the per-minute token limit
+# Groq's paid on-demand list price for gpt-oss-120b (checked 2026-09-24; OpenRouter lists the same).
+# We run on the free tier, so this is what the same calls *would* cost; reasoning tokens bill as output.
+PRICE_PER_TOKEN = {"input": 0.15e-6, "output": 0.60e-6}
+
+
+def cost_usd(input_tokens: int, output_tokens: int) -> float:
+    return input_tokens * PRICE_PER_TOKEN["input"] + output_tokens * PRICE_PER_TOKEN["output"]
 
 
 class BaselineRateLimited(Exception):

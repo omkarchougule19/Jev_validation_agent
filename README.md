@@ -22,9 +22,9 @@ every single time, for what's really just a yes/no or pick-one decision.
 
 Jev-Guard swaps that grading step for Jev, a model built specifically for
 bounded decisions like this — not for writing text. It answers in about
-0.2 seconds, roughly 2x faster than gpt-oss-120b on Groq and 4x faster
-than gpt-4o-mini in our tests, at the same accuracy, for exactly the kind
-of question a guardrail check actually is.
+0.2 seconds, roughly 2x faster and 4x cheaper than gpt-oss-120b on Groq
+(and 4x faster than gpt-4o-mini) in our tests, at the same accuracy, for
+exactly the kind of question a guardrail check actually is.
 
 ## How it works
 
@@ -104,7 +104,7 @@ the source says 35). Jev's one miss was on format: it accepted
 interval on the catch-rate gap (5,000 resamples) says none of them are
 statistically significant at this sample size: on-topic +0% [0%, 0%],
 contradiction +8% [0%, +20%], format -10% [-30%, 0%]. The honest summary
-is **about the same accuracy, roughly 2x faster**.
+is **about the same accuracy, roughly 2x faster and 4x cheaper**.
 
 **Against gpt-4o-mini** (an earlier run, 2026-09-22, via OpenRouter),
 the gap was bigger: same catch rates (100% / 100% / 80%), with baseline
@@ -117,10 +117,21 @@ turned up misses on a missing closing brace, a missing comma and a
 trailing comma, all passed as valid JSON. Treat it as a soft signal and
 use a real parser when you need strict JSON.
 
-**Cost:** Jev costs about $0.0000124 per check (measured on the
-OpenRouter key: 5 calls cost $0.000062), roughly the same as gpt-4o-mini's
-$0.000015, and gpt-oss-120b was free on Groq's free tier. So the claim
-here is speed at the same accuracy, not a big cost saving.
+**Cost, at list prices** (worked out from the token counts of this run):
+
+| Judge | Price | Tokens per check (avg) | Cost per check | Per 1M checks |
+|---|---|---|---|---|
+| **Jev** (OpenRouter) | $0.042 / 1M input, output free | 316 in, 21 out | $0.0000133 | **$13.26** |
+| gpt-oss-120b (Groq paid tier) | $0.15 / 1M input, $0.60 / 1M output | 159 in, 51 out | $0.0000547 | $54.72 |
+| gpt-4o-mini (OpenRouter, earlier run) | $0.15 / 1M input, $0.60 / 1M output | ~61 in, ~11 out | $0.0000160 | $15.97 |
+
+Jev reads more input tokens (its prompt format is longer), but it only
+charges for input, while gpt-oss-120b's reasoning is billed as output at 4x
+the input rate. So Jev came out **about 4x cheaper than gpt-oss-120b**
+and about 1.2x cheaper than gpt-4o-mini. Jev's figure matches what the
+OpenRouter key was actually billed (5 calls cost $0.000062). The benchmark
+itself ran gpt-oss-120b on Groq's free tier, so its cost here is what the
+same calls would cost on the paid tier.
 
 Raw results from the run: `results/report.json` (gitignored, regenerate
 it yourself). Re-run everything, including the chart above, with
@@ -166,8 +177,9 @@ numbers alongside.
 
 There's also a **speed race** at [`/race`](https://jev-guard-demo.onrender.com/race):
 Jev and gpt-oss-120b (on Groq) check the same 25 answers, picked at random
-from the test set, live and side by side, with every call's result and
-timing shown as it lands. Because the baseline runs on Groq's free tier
+from the test set, live and side by side, with every call's result,
+timing and cost shown as it lands, plus a projected cost per million
+checks for each. Because the baseline runs on Groq's free tier
 (30 requests a minute), races run one at a time, at least a minute apart,
 with a small daily cap (`RACE_DAILY_CAP`, default 10). When a limit is
 reached the page says so.

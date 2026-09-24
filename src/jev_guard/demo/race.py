@@ -18,6 +18,7 @@ import threading
 import time
 from datetime import date
 
+from jev_guard import baseline, client
 from jev_guard.baseline import BASELINE_MODEL, BaselineRateLimited
 
 RACE_SIZE = 25
@@ -26,6 +27,14 @@ DAILY_CAP = int(os.environ.get("RACE_DAILY_CAP", 10))
 
 _lock = threading.Lock()
 _state = {"busy": False, "next_allowed": 0.0, "day": None, "count": 0}
+
+
+def jev_prices() -> dict:
+    return {k: v * 1e6 for k, v in client.PRICE_PER_TOKEN.items()}  # $ per 1M tokens
+
+
+def baseline_prices() -> dict:
+    return {k: v * 1e6 for k, v in baseline.PRICE_PER_TOKEN.items()}
 
 
 def _sse(event: dict) -> str:
@@ -62,7 +71,7 @@ def _run_lane(name: str, judge, cases: list[dict], out: queue.Queue) -> None:
     start = time.perf_counter()
     for i, case in enumerate(cases):
         try:
-            verdict, latency_ms = judge(case)
+            verdict, latency_ms, cost = judge(case)
         except BaselineRateLimited as exc:
             out.put({"type": "limit", "lane": name, "retry_after": exc.retry_after})
             return
@@ -71,13 +80,13 @@ def _run_lane(name: str, judge, cases: list[dict], out: queue.Queue) -> None:
             return
         out.put({"type": "result", "lane": name, "i": i, "verdict": verdict,
                  "correct": (verdict == "pass") == (case["expected"] == "pass"),
-                 "ms": round(latency_ms), "elapsed_ms": round((time.perf_counter() - start) * 1000)})
+                 "ms": round(latency_ms), "cost": cost, "elapsed_ms": round((time.perf_counter() - start) * 1000)})
     out.put({"type": "lane_done", "lane": name, "elapsed_ms": round((time.perf_counter() - start) * 1000)})
 
 
 def race_events(jev_judge, groq_judge, cases: list[dict] | None = None, all_cases: list[dict] | None = None):
     """Generator of SSE strings. Judges take a test case and return
-    (verdict, latency_ms); they're passed in so tests can use fakes."""
+    (verdict, latency_ms, cost_usd); they're passed in so tests can use fakes."""
     blocked = _reserve_slot()
     if blocked:
         yield _sse(blocked)
@@ -87,7 +96,8 @@ def race_events(jev_judge, groq_judge, cases: list[dict] | None = None, all_case
     try:
         if cases is None:
             cases = random.sample(all_cases, RACE_SIZE)
-        yield _sse({"type": "start", "baseline_model": BASELINE_MODEL, "cases": [_case_summary(c) for c in cases]})
+        yield _sse({"type": "start", "baseline_model": BASELINE_MODEL, "cases": [_case_summary(c) for c in cases],
+                    "prices": {"jev": jev_prices(), "baseline": baseline_prices()}})
 
         out: queue.Queue = queue.Queue()
         for name, judge in (("jev", jev_judge), ("baseline", groq_judge)):

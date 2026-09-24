@@ -19,6 +19,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
+from jev_guard import baseline, client
 from jev_guard.baseline import make_baseline_client, run_baseline_case
 from jev_guard.checks import run_jev_case
 from jev_guard.client import make_client
@@ -78,12 +79,12 @@ def race():
     jev_client, groq_client = make_client(), make_baseline_client()
 
     def jev_judge(case):
-        result = run_jev_case(jev_client, case)
-        return result.verdict, result.latency_ms
+        r = run_jev_case(jev_client, case)
+        return r.verdict, r.latency_ms, client.cost_usd(r.input_tokens, r.output_tokens)
 
     def groq_judge(case):
         verdict, call = run_baseline_case(groq_client, case)
-        return verdict, call.latency_ms
+        return verdict, call.latency_ms, baseline.cost_usd(call.input_tokens, call.output_tokens)
 
     def stream():
         try:

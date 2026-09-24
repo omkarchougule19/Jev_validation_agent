@@ -68,7 +68,8 @@
   th { color: var(--muted); font-weight: 600; }
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   .table-wrap { overflow-x: auto; }
-  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 4px 0 8px; }
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 4px 0 8px; }
+  @media (max-width: 800px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
   .stat-row div { background: var(--bg); border-radius: 10px; padding: 12px; }
   .stat-row b { display: block; font-size: 22px; }
   @media (max-width: 640px) { .stat-row { grid-template-columns: 1fr; } }
@@ -91,7 +92,7 @@
     money on every message. Jev-Guard uses <b>Jev</b>, a small AI model built only for yes/no and pick-one
     decisions, to do the same job.</p>
 
-  <a class="race-link" href="/race"><b>🏁 Watch the speed race</b><span>Jev vs OpenAI's GPT-OSS on the same 25 answers, live, side by side.</span></a>
+  <a class="race-link" href="/race"><b>🏁 Watch the speed race</b><span>Jev vs OpenAI's GPT-OSS on the same 25 answers, live, side by side, with the cost of each.</span></a>
 
   <div class="how">
     <div><b>1. Pick an example</b>or paste in your own chatbot answer.</div>
@@ -147,6 +148,7 @@
     <div class="stat-row">
       <div><b>Same accuracy</b><span class="muted">no difference that holds up statistically, on any check</span></div>
       <div><b>~2× faster</b><span class="muted">about 0.18 s vs. 0.3 to 0.4 s per check</span></div>
+      <div><b>~4× cheaper</b><span class="muted">$13 vs $55 per million checks, at list prices</span></div>
       <div><b>0 false alarms</b><span class="muted">Jev never wrongly flagged a good answer</span></div>
     </div>
     <details>
