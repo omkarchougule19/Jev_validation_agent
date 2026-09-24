@@ -3,6 +3,7 @@
 [![Tests](https://github.com/omkarchougule19/Jev_validation_agent/actions/workflows/tests.yml/badge.svg)](https://github.com/omkarchougule19/Jev_validation_agent/actions/workflows/tests.yml)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Live demo](https://img.shields.io/badge/demo-live-purple)](https://jev-guard-demo.onrender.com)
 
 A fast, cheap way to double-check an LLM's answer before you show it to a
 user — using **Jev** (TypeSafe AI's decision-only model) instead of asking
@@ -153,6 +154,10 @@ python -m pytest
 
 ## Live demo
 
+**Try it: [jev-guard-demo.onrender.com](https://jev-guard-demo.onrender.com)**
+(free hosting, so the first visit after a quiet spell can take up to a
+minute to wake up).
+
 A single page where you paste a question, an answer, and optional source
 context, and watch Jev-Guard verdict it in real time, with the benchmark
 numbers alongside.
@@ -163,7 +168,7 @@ python -m jev_guard.demo  # then open http://localhost:8000
 ```
 
 To host it, use the included `Dockerfile` (it listens on `$PORT`, 7860 by
-default, which suits Hugging Face Spaces or Render) and set
+default; the live copy runs on Render's free tier) and set
 `OPENROUTER_API_KEY` as a secret on the host. A hosted copy spends your
 OpenRouter credits, so inputs are capped at 4,000 characters and each IP
 gets 10 checks a minute.
