@@ -8,106 +8,170 @@
 <style>
   :root {
     --bg: #f7f7f5; --card: #ffffff; --text: #1d1d1b; --muted: #65655f; --border: #e2e2dc;
-    --accent: #2f5bd3; --on-accent: #ffffff; --track: #ecece6;
-    --right: #0072b2; --wrong: #d55e00; --warn-bg: #fbf0dc; --warn: #7a4f0e;
+    --accent: #2f5bd3; --on-accent: #ffffff; --empty: #f0f0ea; --empty-border: #d6d6ce; --track: #ecece6;
+    --right: #1f9d55; --wrong: #d64545; --flag: #e8b400; --on-flag: #2b2200;
+    --gold: #c9a227; --warn-bg: #fbf0dc; --warn: #7a4f0e;
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg: #141413; --card: #1e1e1c; --text: #ececea; --muted: #a2a29b; --border: #33332f;
-            --accent: #7b9cf0; --on-accent: #0f1320; --track: #2a2a27;
-            --right: #56b4e9; --wrong: #f0894a; --warn-bg: #2d2415; --warn: #e8b865; }
+            --accent: #7b9cf0; --on-accent: #0f1320; --empty: #242421; --empty-border: #3a3a35; --track: #2a2a27;
+            --right: #3fbf73; --wrong: #ef6a6a; --flag: #f2c94c; --on-flag: #2b2200;
+            --gold: #f2c94c; --warn-bg: #2d2415; --warn: #e8b865; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text);
-         font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  main { max-width: 860px; margin: 0 auto; padding: 40px 16px 64px; }
-  h1 { margin: 0 0 8px; font-size: 30px; line-height: 1.2; }
+         font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; overflow-x: hidden; }
+  main { max-width: 900px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { margin: 0 0 6px; font-size: 32px; line-height: 1.15; }
   .lead { margin: 0 0 8px; font-size: 17px; }
   .muted { color: var(--muted); font-size: 14px; }
   a { color: var(--accent); }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 18px; }
-  .run { width: 100%; padding: 13px; border-radius: 8px; border: 0; cursor: pointer; margin: 18px 0;
-         background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; font-size: 16px; }
-  .run:disabled { opacity: .6; cursor: wait; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; margin-bottom: 16px; }
 
-  .lane-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-  .lane-name { font-size: 19px; font-weight: 700; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 14px; margin: 10px 0 0; align-items: center; }
+  .sw { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 5px; margin-right: 5px;
+        vertical-align: -5px; color: #fff; font-size: 12px; font-weight: 800; }
+  .go { width: 100%; padding: 16px; border-radius: 12px; border: 0; cursor: pointer; margin: 18px 0;
+        background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 800; font-size: 19px; letter-spacing: .02em;
+        box-shadow: 0 4px 0 color-mix(in srgb, var(--accent) 60%, #000); transition: transform .08s, box-shadow .08s; }
+  .go:active { transform: translateY(3px); box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 60%, #000); }
+  .go:disabled { opacity: .6; cursor: wait; transform: none; }
+
+  .lane.leader { border-color: var(--gold); box-shadow: 0 0 0 2px color-mix(in srgb, var(--gold) 45%, transparent); }
+  .lane-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .who { display: flex; align-items: center; gap: 10px; }
+  .avatar { font-size: 30px; line-height: 1; }
+  .lane-name { font-size: 20px; font-weight: 800; }
   .lane-sub { font-size: 13px; color: var(--muted); }
-  .timer { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .bar { height: 8px; background: var(--track); border-radius: 99px; margin: 10px 0 12px; overflow: hidden; }
-  .bar div { height: 100%; width: 0; background: var(--accent); transition: width .15s; }
-  .tiles { display: grid; grid-template-columns: repeat(25, 1fr); gap: 4px; }
-  @media (max-width: 640px) { .tiles { grid-template-columns: repeat(13, 1fr); } }
-  .tile { aspect-ratio: 1; border-radius: 5px; border: 1px solid var(--border); background: var(--track);
-          font: 700 12px/1 system-ui, sans-serif; color: #fff; padding: 0; cursor: default; }
-  .tile.right { background: var(--right); border-color: var(--right); cursor: pointer; }
-  .tile.wrong { background: var(--wrong); border-color: var(--wrong); cursor: pointer; }
-  .tile.pop { animation: pop .25s ease-out; }
-  @keyframes pop { from { transform: scale(.6); } to { transform: scale(1); } }
-  @media (prefers-reduced-motion: reduce) { .tile.pop { animation: none; } .bar div { transition: none; } }
-  .lane-note { font-size: 14px; margin-top: 10px; min-height: 1.4em; }
-  .badge { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--accent); color: var(--on-accent); }
+  .badge { font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 99px; background: var(--gold); color: #2b2200; margin-left: 6px; }
+  .timer { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
 
-  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; margin-top: 4px; }
-  .sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 4px;
-        color: #fff; font-size: 10px; text-align: center; line-height: 14px; font-weight: 700; }
-  .warn { background: var(--warn-bg); color: var(--warn); border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
+  .track { position: relative; height: 38px; margin: 12px 0 10px; border-radius: 99px; background: var(--track);
+           background-image: repeating-linear-gradient(90deg, transparent 0 18px, color-mix(in srgb, var(--muted) 18%, transparent) 18px 20px); }
+  .fill { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 99px; background: color-mix(in srgb, var(--accent) 22%, transparent); transition: width .2s; }
+  .runner { position: absolute; top: 50%; left: 0; transform: translate(-10%, -52%); font-size: 26px; transition: left .2s; }
+  .finish { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 22px; }
+
+  .boxes { display: grid; grid-template-columns: repeat(25, 1fr); gap: 5px; }
+  @media (max-width: 700px) { .boxes { grid-template-columns: repeat(13, 1fr); } .timer { font-size: 24px; } }
+  .box { aspect-ratio: 1; border-radius: 6px; border: 2px dashed var(--empty-border); background: var(--empty);
+         font: 800 13px/1 system-ui, sans-serif; color: #fff; padding: 0; cursor: default; }
+  .box.right, .box.wrong, .box.flag { border-style: solid; cursor: pointer; }
+  .box.right { background: var(--right); border-color: var(--right); }
+  .box.wrong { background: var(--wrong); border-color: var(--wrong); }
+  .box.flag { background: var(--flag); border-color: var(--flag); color: var(--on-flag); }
+  .box.pop { animation: pop .3s cubic-bezier(.3, 1.6, .5, 1); }
+  @keyframes pop { from { transform: scale(.3); } to { transform: scale(1); } }
+
+  .score { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 14px; font-weight: 700; }
+  .score span { font-variant-numeric: tabular-nums; }
+  .s-right { color: var(--right); } .s-wrong { color: var(--wrong); } .s-flag { color: color-mix(in srgb, var(--flag) 75%, var(--text)); }
+  .s-note { color: var(--muted); font-weight: 400; margin-left: auto; }
+
+  .overlay { position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 20; }
+  .count { font-size: 140px; font-weight: 900; color: var(--accent); text-shadow: 0 6px 0 color-mix(in srgb, var(--accent) 30%, transparent);
+           animation: zoom .8s ease-out forwards; }
+  @keyframes zoom { from { transform: scale(1.8); opacity: 0; } 30% { opacity: 1; } to { transform: scale(.9); opacity: .15; } }
+  .confetti { position: fixed; top: -12px; width: 9px; height: 14px; border-radius: 2px; z-index: 30; pointer-events: none;
+              animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(105vh) rotate(720deg); } }
+
+  .warn { background: var(--warn-bg); color: var(--warn); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }
   .warn b { display: block; }
-  .summary h2 { margin: 0 0 8px; font-size: 20px; }
+  .podium h2 { margin: 0 0 12px; font-size: 24px; }
+  .places { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 560px) { .places { grid-template-columns: 1fr; } }
+  .place { border-radius: 12px; padding: 14px; background: var(--bg); }
+  .place.first { outline: 2px solid var(--gold); }
+  .medal { font-size: 30px; }
+  .place b { display: block; font-size: 18px; }
   .detail { font-size: 14px; }
-  .detail dt { font-weight: 600; margin-top: 6px; }
+  .detail dt { font-weight: 700; margin-top: 6px; }
   .detail dd { margin: 0; color: var(--muted); word-break: break-word; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .box.pop, .count { animation: none; } .fill, .runner { transition: none; } .confetti { display: none; }
+  }
 </style>
 </head>
 <body>
 <main>
   <p class="muted"><a href="/">← Try the checker yourself</a></p>
-  <h1>The speed race</h1>
-  <p class="lead">Two AIs check the same 25 chatbot answers, one at a time, side by side. Every call happens live
-    when you press start.</p>
-  <p class="muted"><b>Jev</b> is a small model built only for decisions. <b>GPT-OSS 120B</b> is OpenAI's open model,
-    running on Groq, one of the fastest AI hosts there is. The 25 answers are picked at random from our 100-case test
-    set, a mix of good answers and deliberately flawed ones. Both get the exact same answers in the same order.</p>
+  <h1>🏁 The speed race</h1>
+  <p class="lead">Two AIs race to check the same 25 chatbot answers, live. Each box fills in the moment its answer is judged.</p>
+  <p class="muted"><b>⚡ Jev</b> is a small model built only for decisions. <b>🤖 GPT-OSS 120B</b> is OpenAI's open model on Groq,
+    one of the fastest AI hosts there is. The 25 answers are drawn at random from our 100-case test set, a mix of good
+    answers and deliberately flawed ones, and both racers get them in the same order.</p>
   <div class="legend">
     <span><span class="sw" style="background:var(--right)">✓</span>right call</span>
     <span><span class="sw" style="background:var(--wrong)">✗</span>wrong call</span>
-    <span class="muted">Tap a filled tile to see that answer.</span>
+    <span><span class="sw" style="background:var(--flag);color:var(--on-flag)">?</span>unsure, sent to a human</span>
+    <span class="muted">Tap a filled box to see that answer.</span>
   </div>
 
-  <button class="run" id="start">Start the race</button>
+  <button class="go" id="start">▶ Start the race</button>
   <div id="warn" class="warn" hidden></div>
 
-  <div class="card" id="lane-jev">
-    <div class="lane-head"><div><span class="lane-name">Jev</span> <span class="badge" hidden>FINISHED FIRST</span>
-      <div class="lane-sub">TypeSafe AI's decision model, via OpenRouter</div></div>
-      <div class="timer">0.00 s</div></div>
-    <div class="bar"><div></div></div><div class="tiles"></div><div class="lane-note muted"></div>
+  <div class="card lane" id="lane-jev">
+    <div class="lane-head">
+      <div class="who"><span class="avatar">⚡</span><div><span class="lane-name">Jev</span><span class="badge" hidden>🏆 WINNER</span>
+        <div class="lane-sub">TypeSafe AI's decision model, via OpenRouter</div></div></div>
+      <div class="timer">0.00 s</div>
+    </div>
+    <div class="track"><div class="fill"></div><span class="runner">⚡</span><span class="finish">🏁</span></div>
+    <div class="boxes"></div>
+    <div class="score"></div>
   </div>
-  <div class="card" id="lane-baseline">
-    <div class="lane-head"><div><span class="lane-name">GPT-OSS 120B</span> <span class="badge" hidden>FINISHED FIRST</span>
-      <div class="lane-sub">OpenAI's open model on Groq, reasoning set to “low”</div></div>
-      <div class="timer">0.00 s</div></div>
-    <div class="bar"><div></div></div><div class="tiles"></div><div class="lane-note muted"></div>
+  <div class="card lane" id="lane-baseline">
+    <div class="lane-head">
+      <div class="who"><span class="avatar">🤖</span><div><span class="lane-name">GPT-OSS 120B</span><span class="badge" hidden>🏆 WINNER</span>
+        <div class="lane-sub">OpenAI's open model on Groq, reasoning set to “low”</div></div></div>
+      <div class="timer">0.00 s</div>
+    </div>
+    <div class="track"><div class="fill"></div><span class="runner">🤖</span><span class="finish">🏁</span></div>
+    <div class="boxes"></div>
+    <div class="score"></div>
   </div>
 
-  <div class="card summary" id="summary" hidden aria-live="polite"></div>
+  <div class="card podium" id="summary" hidden aria-live="polite"></div>
   <div class="card detail" id="detail" hidden></div>
 
   <p class="muted">Times include the network trip from our server to each provider, so they vary a little from race to
     race. For the full 100-case comparison see the <a href="https://github.com/omkarchougule19/Jev_validation_agent">project on GitHub</a>.</p>
 </main>
+<div class="overlay" id="overlay" aria-hidden="true"></div>
 <script>
+const N = 25;
 const CONTACT = "https://github.com/omkarchougule19/Jev_validation_agent/issues";
+const NAMES = { jev: "Jev", baseline: "GPT-OSS 120B" };
 const CHECK_NAMES = { on_topic: "Does it answer the question?", contradiction: "Does it stick to the source?", format: "Is it in the right format?" };
 const GIVEN_LABEL = { on_topic: "Question", contradiction: "Source", format: "Required format" };
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-let cases = [], lanes = {}, es = null, ended = false;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let cases = [], lanes = {}, es = null, ended = false, winner = null;
 
-function lane(name) {
+function kind(ev) { return ev.verdict === "flag" ? "flag" : ev.correct ? "right" : "wrong"; }
+
+function makeLane(name) {
   const root = $("#lane-" + name);
-  return { root, timer: root.querySelector(".timer"), bar: root.querySelector(".bar div"), tiles: root.querySelector(".tiles"),
-           note: root.querySelector(".lane-note"), badge: root.querySelector(".badge"),
-           started: 0, raf: 0, done: false, finalMs: null, count: 0, right: 0, results: [] };
+  return { name, root, timer: root.querySelector(".timer"), fill: root.querySelector(".fill"), runner: root.querySelector(".runner"),
+           boxes: root.querySelector(".boxes"), score: root.querySelector(".score"), badge: root.querySelector(".badge"),
+           started: 0, raf: 0, done: false, finalMs: null, count: 0, right: 0, wrong: 0, flag: 0, results: [], note: "" };
+}
+
+function renderScore(l) {
+  const secs = l.finalMs != null ? l.finalMs / 1000 : l.started ? (performance.now() - l.started) / 1000 : 0;
+  const rate = l.count && secs ? `${(l.count / secs).toFixed(1)} checks/s` : "";
+  l.score.innerHTML = `<span class="s-right">✓ ${l.right}</span><span class="s-wrong">✗ ${l.wrong}</span><span class="s-flag">? ${l.flag}</span>` +
+    `<span class="s-note">${esc(l.note || `${l.count} / ${N}${rate ? " · " + rate : ""}`)}</span>`;
+}
+
+function setProgress(l) {
+  const pct = l.count / N * 100;
+  l.fill.style.width = pct + "%";
+  l.runner.style.left = `calc(${pct}% - ${pct / 100 * 34}px)`;
 }
 
 function tick(l) {
@@ -119,6 +183,7 @@ function tick(l) {
 function stop(l, ms) {
   l.done = true; cancelAnimationFrame(l.raf);
   if (ms != null) { l.finalMs = ms; l.timer.textContent = (ms / 1000).toFixed(2) + " s"; }
+  renderScore(l);
 }
 
 function warn(title, text, contact) {
@@ -128,106 +193,143 @@ function warn(title, text, contact) {
 }
 
 function reset() {
-  ended = false; $("#warn").hidden = true; $("#summary").hidden = true; $("#detail").hidden = true;
-  lanes = { jev: lane("jev"), baseline: lane("baseline") };
+  ended = false; winner = null; cases = [];
+  $("#warn").hidden = true; $("#summary").hidden = true; $("#detail").hidden = true;
+  lanes = { jev: makeLane("jev"), baseline: makeLane("baseline") };
   for (const l of Object.values(lanes)) {
-    l.timer.textContent = "0.00 s"; l.bar.style.width = "0"; l.note.textContent = ""; l.badge.hidden = true;
-    l.tiles.innerHTML = "";
+    l.root.classList.remove("leader"); l.badge.hidden = true; l.timer.textContent = "0.00 s";
+    l.boxes.innerHTML = Array.from({ length: N }, (_, i) => `<button class="box" disabled aria-label="Answer ${i + 1}, waiting"></button>`).join("");
+    setProgress(l); renderScore(l);
   }
 }
 
-function start() {
+async function countdown() {
+  if (REDUCED) return;
+  const o = $("#overlay");
+  for (const n of ["3", "2", "1", "GO!"]) {
+    o.innerHTML = `<div class="count">${n}</div>`;
+    await sleep(n === "GO!" ? 450 : 700);
+  }
+  o.innerHTML = "";
+}
+
+function confetti() {
+  if (REDUCED) return;
+  const colors = ["#1f9d55", "#e8b400", "#2f5bd3", "#d64545", "#c9a227", "#7b9cf0"];
+  for (let i = 0; i < 70; i++) {
+    const c = document.createElement("div");
+    c.className = "confetti";
+    c.style.left = Math.random() * 100 + "vw";
+    c.style.background = colors[i % colors.length];
+    c.style.animationDuration = 1.4 + Math.random() * 1.4 + "s";
+    c.style.animationDelay = Math.random() * .3 + "s";
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 3500);
+  }
+}
+
+async function start() {
   reset();
   const btn = $("#start");
-  btn.disabled = true; btn.textContent = "Starting…";
+  btn.disabled = true; btn.textContent = "Get ready…";
+  await countdown();
+  btn.textContent = "Racing…";
   es = new EventSource("/api/race");
   es.onmessage = e => handle(JSON.parse(e.data));
   es.onerror = () => {
     es.close();
-    if (!ended) { finishUI(); warn("The race was interrupted.", "The connection to the server dropped. Try again in a minute."); }
+    if (!ended) { finish(); warn("The race was interrupted.", "The connection to the server dropped. Try again in a minute."); }
   };
+}
+
+function updateLeader() {
+  if (winner) return;  // the winner keeps the gold outline
+  const { jev, baseline } = lanes;
+  jev.root.classList.toggle("leader", jev.count > baseline.count);
+  baseline.root.classList.toggle("leader", baseline.count > jev.count);
 }
 
 function handle(ev) {
   if (ev.type === "blocked") {
-    ended = true; es.close(); finishUI();
+    ended = true; es.close(); finish();
     if (ev.reason === "limit") warn("Today's free race limit is used up.", "These races run on free tiers, so only a few can run each day.", true);
     else warn("A race just ran.", `Groq's free tier allows one race a minute. Try again in about ${ev.retry_in} seconds.`);
     return;
   }
   if (ev.type === "start") {
     cases = ev.cases;
-    $("#start").textContent = "Racing…";
-    for (const l of Object.values(lanes)) {
-      l.tiles.innerHTML = cases.map((_, i) => `<button class="tile" data-i="${i}" disabled aria-label="Answer ${i + 1}, not checked yet"></button>`).join("");
-      l.started = performance.now(); tick(l);
-    }
+    for (const l of Object.values(lanes)) { l.started = performance.now(); tick(l); }
     return;
   }
+  if (ev.type === "end") { ended = true; es.close(); finish(); summarize(); return; }
+
   const l = lanes[ev.lane];
   if (ev.type === "result") {
-    l.count++; if (ev.correct) l.right++;
-    l.results[ev.i] = ev;
-    const t = l.tiles.children[ev.i];
-    t.className = "tile pop " + (ev.correct ? "right" : "wrong");
-    t.textContent = ev.correct ? "✓" : "✗";
-    t.disabled = false;
-    t.setAttribute("aria-label", `Answer ${ev.i + 1}: ${ev.correct ? "right" : "wrong"} call, ${ev.verdict}, ${ev.ms} ms`);
-    t.onclick = () => showDetail(ev.lane, ev.i);
-    l.bar.style.width = (l.count / cases.length * 100) + "%";
-    l.note.textContent = `${l.count} of ${cases.length} checked`;
+    const k = kind(ev);
+    l.count++; l[k]++; l.results[ev.i] = ev;
+    const b = l.boxes.children[ev.i];
+    b.className = "box pop " + k;
+    b.textContent = { right: "✓", wrong: "✗", flag: "?" }[k];
+    b.disabled = false;
+    b.setAttribute("aria-label", `Answer ${ev.i + 1}: ${k === "flag" ? "sent to a human" : k + " call"}, ${ev.ms} ms`);
+    b.onclick = () => showDetail(ev.i);
+    setProgress(l); renderScore(l); updateLeader();
   } else if (ev.type === "lane_done") {
     stop(l, ev.elapsed_ms);
-    const other = lanes[ev.lane === "jev" ? "baseline" : "jev"];
-    if (!other.done) l.badge.hidden = false;
+    if (!winner) {
+      winner = l.name; l.badge.hidden = false; l.root.classList.add("leader");
+      Object.values(lanes).forEach(x => x !== l && x.root.classList.remove("leader"));
+      confetti();
+    }
   } else if (ev.type === "limit") {
-    stop(l); l.note.textContent = `Stopped after ${l.count}: Groq's free usage limit was reached.`;
-    warn("GPT-OSS hit its free usage limit.", "Groq's free tier caps how many checks can run, so this lane stopped early.", true);
+    l.note = `Stopped after ${l.count}: free usage limit reached`; stop(l);
+    warn("GPT-OSS hit its free usage limit.", "Groq's free tier caps how many checks can run, so this racer stopped early.", true);
   } else if (ev.type === "error") {
-    for (const x of ev.lane === "both" ? Object.values(lanes) : [l]) { stop(x); }
-    const who = ev.lane === "jev" ? "Jev" : ev.lane === "baseline" ? "GPT-OSS" : "The judges";
-    (ev.lane === "both" ? lanes.jev : l).note.textContent = `Stopped: ${who} couldn't be reached.`;
+    const hit = ev.lane === "both" ? Object.values(lanes) : [l];
+    const who = ev.lane === "jev" ? "Jev" : ev.lane === "baseline" ? "GPT-OSS" : "The racers";
+    hit.forEach(x => { x.note = `Stopped: couldn't be reached`; stop(x); });
     warn(`${who} couldn't be reached.`, "The AI service didn't respond or may be out of credit.", true);
-  } else if (ev.type === "end") {
-    ended = true; es.close(); finishUI(); summarize();
   }
 }
 
-function finishUI() {
+function finish() {
   const btn = $("#start");
-  btn.disabled = false; btn.textContent = "Race again";
+  btn.disabled = false; btn.textContent = "↻ Race again";
 }
 
 function summarize() {
-  const j = lanes.jev, b = lanes.baseline, n = cases.length;
-  if (j.finalMs == null && b.finalMs == null) return;
+  const j = lanes.jev, b = lanes.baseline;
+  const done = [j, b].filter(l => l.finalMs != null).sort((x, y) => x.finalMs - y.finalMs);
+  if (!done.length) return;
   let head;
-  if (j.finalMs != null && b.finalMs != null) {
-    const fast = j.finalMs <= b.finalMs ? ["Jev", j, b] : ["GPT-OSS", b, j];
-    const ratio = fast[2].finalMs / fast[1].finalMs;
-    head = ratio < 1.1 ? "Practically a tie." : `${fast[0]} finished ${ratio.toFixed(1)}× faster.`;
+  if (done.length === 2) {
+    const ratio = done[1].finalMs / done[0].finalMs;
+    head = ratio < 1.1 ? "📸 Photo finish!" : `🏆 ${NAMES[done[0].name]} wins, ${ratio.toFixed(1)}× faster!`;
   } else {
-    head = j.finalMs != null ? "Only Jev finished this race." : "Only GPT-OSS finished this race.";
+    head = `🏁 Only ${NAMES[done[0].name]} crossed the line.`;
   }
-  const row = (name, l) => `<li><b>${name}:</b> ${l.count} of ${n} checked` +
-    (l.finalMs != null ? ` in ${(l.finalMs / 1000).toFixed(2)} s` : "") + `, ${l.right} right calls.</li>`;
-  const bothDone = [...Array(n).keys()].filter(i => j.results[i] && b.results[i]);
-  const fair = bothDone.length < n
-    ? `<p class="muted">Accuracy is only comparable on the ${bothDone.length} answers both checked: Jev ${bothDone.filter(i => j.results[i].correct).length}, GPT-OSS ${bothDone.filter(i => b.results[i].correct).length} right.</p>` : "";
+  const order = [...done, ...[j, b].filter(l => l.finalMs == null)];
+  const place = (l, idx) => `<div class="place ${idx === 0 && l.finalMs != null ? "first" : ""}">
+      <span class="medal">${l.finalMs == null ? "🚧" : idx === 0 ? "🥇" : "🥈"}</span>
+      <b>${esc(NAMES[l.name])}</b>
+      ${l.finalMs != null ? `${(l.finalMs / 1000).toFixed(2)} s for ${l.count} answers` : `${l.count} of ${N} answers`}
+      <div class="muted">✓ ${l.right} right · ✗ ${l.wrong} wrong · ? ${l.flag} sent to a human</div></div>`;
   const s = $("#summary");
-  s.innerHTML = `<h2>${head}</h2><ul>${row("Jev", j)}${row("GPT-OSS 120B", b)}</ul>${fair}`;
+  s.innerHTML = `<h2>${head}</h2><div class="places">${order.map(place).join("")}</div>`;
   s.hidden = false;
+  s.scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block: "nearest" });
 }
 
-function showDetail(laneName, i) {
+function showDetail(i) {
   const c = cases[i], jr = lanes.jev.results[i], br = lanes.baseline.results[i];
-  const verdict = r => r ? `${r.verdict} (${r.correct ? "right" : "wrong"}, ${r.ms} ms)` : "not checked";
+  const said = r => !r ? "not checked yet"
+    : `${r.verdict === "flag" ? "unsure, sent to a human" : r.verdict} (${r.correct ? "right" : "wrong"}, ${r.ms} ms)`;
   const d = $("#detail");
   d.innerHTML = `<b>Answer ${i + 1}: ${esc(CHECK_NAMES[c.check])}</b> <span class="muted">(${esc(c.difficulty)} case, should ${c.expected === "pass" ? "pass" : "be caught"})</span>
     <dl><dt>${esc(GIVEN_LABEL[c.check])}</dt><dd>${esc(c.given)}</dd><dt>Chatbot's answer</dt><dd>${esc(c.answer)}</dd>
-    <dt>Jev said</dt><dd>${esc(verdict(jr))}</dd><dt>GPT-OSS said</dt><dd>${esc(verdict(br))}</dd></dl>`;
+    <dt>⚡ Jev said</dt><dd>${esc(said(jr))}</dd><dt>🤖 GPT-OSS said</dt><dd>${esc(said(br))}</dd></dl>`;
   d.hidden = false;
-  d.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  d.scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block: "nearest" });
 }
 
 $("#start").onclick = start;
