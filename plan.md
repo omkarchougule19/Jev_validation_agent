@@ -177,3 +177,26 @@ the benchmark did (a missing closing brace, a missing comma, and a
 trailing comma all passed as valid JSON). The README and the demo page
 now both say plainly that the format check is a soft signal, not a
 replacement for a real parser.
+
+## Groq baseline and the speed race (built after that)
+
+The comparison judge moved off paid usage: it's now OpenAI's open model
+gpt-oss-120b, running on Groq's free tier, while Jev stays on OpenRouter.
+Groq is one of the fastest AI hosts there is, so this is a tougher
+opponent than gpt-4o-mini. Re-running the 100-case benchmark against it
+gave about the same accuracy (no difference that holds up statistically)
+with Jev about 1.9x faster end to end (22.4 s vs 41.6 s). The README now
+lists speed per opponent (about 2x vs gpt-oss on Groq, about 4x vs
+gpt-4o-mini) instead of one headline number.
+
+The demo got a second page, `/race`: both judges check the same 25
+answers, picked at random from the test set, live and side by side, with
+each result appearing as it lands. Groq's free tier allows 30 requests a
+minute, so a race is 25 cases, races run one at a time and at least a
+minute apart, and there's a small daily cap. When a limit is hit the page
+tells visitors to contact the developer. Races are expected to be rare
+(a couple a day), so there's no replay, database or queue.
+
+The research behind these choices (free models, limits, terms, measured
+latency, streaming on Render) is in `reports/Groq baseline and race demo.md`,
+kept local like `decisions.md` and `logs.md`.

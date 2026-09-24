@@ -76,6 +76,10 @@
   summary { cursor: pointer; color: var(--accent); font-size: 14px; }
   a { color: var(--accent); }
   footer { text-align: center; }
+  .race-link { display: block; margin: 18px 0 0; padding: 14px 16px; border-radius: 10px; text-decoration: none;
+               border: 1px solid var(--accent); background: var(--accent-soft); color: var(--text); }
+  .race-link b { display: block; color: var(--accent); }
+  .race-link span { font-size: 14px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -86,6 +90,8 @@
   <p class="muted">The usual approach is to have a second large AI (like GPT) grade the first one, which is slow and costs
     money on every message. Jev-Guard uses <b>Jev</b>, a small AI model built only for yes/no and pick-one
     decisions, to do the same job.</p>
+
+  <a class="race-link" href="/race"><b>🏁 Watch the speed race</b><span>Jev vs OpenAI's GPT-OSS on the same 25 answers, live, side by side.</span></a>
 
   <div class="how">
     <div><b>1. Pick an example</b>or paste in your own chatbot answer.</div>
@@ -136,22 +142,25 @@
   <div class="card">
     <h2>Does it actually work?</h2>
     <p style="margin-top:0">We tested it on 100 made-up answers, some good and some deliberately flawed (including subtle ones
-      like a transposed digit), and compared it with GPT-4o-mini doing the same checks.</p>
+      like a transposed digit), and compared it with OpenAI's GPT-OSS 120B running on Groq, one of the fastest AI
+      hosts, doing the same checks.</p>
     <div class="stat-row">
-      <div><b>Same accuracy</b><span class="muted">as GPT-4o-mini on all three checks</span></div>
-      <div><b>~3× faster</b><span class="muted">about 0.2 s vs. 0.6 to 1 s per check</span></div>
-      <div><b>0 false alarms</b><span class="muted">no good answer was wrongly flagged</span></div>
+      <div><b>Same accuracy</b><span class="muted">no difference that holds up statistically, on any check</span></div>
+      <div><b>~2× faster</b><span class="muted">about 0.18 s vs. 0.3 to 0.4 s per check</span></div>
+      <div><b>0 false alarms</b><span class="muted">Jev never wrongly flagged a good answer</span></div>
     </div>
     <details>
       <summary>See the full numbers</summary>
       <p class="muted">“Caught” is the share of flawed answers that each checker stopped.</p>
       <div class="table-wrap"><table>
-        <tr><th>Check</th><th class="num">Jev caught</th><th class="num">GPT-4o-mini caught</th>
-            <th class="num">Jev time</th><th class="num">GPT-4o-mini time</th></tr>
-        <tr><td>Answers the question</td><td class="num">100%</td><td class="num">100%</td><td class="num">210 ms</td><td class="num">1,027 ms</td></tr>
-        <tr><td>Sticks to the source</td><td class="num">100%</td><td class="num">100%</td><td class="num">217 ms</td><td class="num">614 ms</td></tr>
-        <tr><td>Right format</td><td class="num">80%</td><td class="num">80%</td><td class="num">192 ms</td><td class="num">748 ms</td></tr>
+        <tr><th>Check</th><th class="num">Jev caught</th><th class="num">GPT-OSS caught</th>
+            <th class="num">Jev time</th><th class="num">GPT-OSS time</th></tr>
+        <tr><td>Answers the question</td><td class="num">100%</td><td class="num">100%</td><td class="num">177 ms</td><td class="num">314 ms</td></tr>
+        <tr><td>Sticks to the source</td><td class="num">100%</td><td class="num">92%</td><td class="num">181 ms</td><td class="num">411 ms</td></tr>
+        <tr><td>Right format</td><td class="num">90%</td><td class="num">100%</td><td class="num">182 ms</td><td class="num">404 ms</td></tr>
       </table></div>
+      <p class="muted">All 100 in a row: Jev 22.4 s, GPT-OSS 41.6 s. GPT-OSS had one false alarm. Against GPT-4o-mini
+        (an earlier run) Jev was about 4× faster at the same accuracy.</p>
       <p class="muted">The format check is the weakest: small slips like a trailing comma or a missing bracket can
         get through. For strict JSON, also run a real parser.</p>
     </details>

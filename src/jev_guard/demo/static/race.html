@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jev Speed Race</title>
+<meta name="description" content="Watch Jev and GPT-OSS check the same 25 chatbot answers live, side by side.">
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #ffffff; --text: #1d1d1b; --muted: #65655f; --border: #e2e2dc;
+    --accent: #2f5bd3; --on-accent: #ffffff; --track: #ecece6;
+    --right: #0072b2; --wrong: #d55e00; --warn-bg: #fbf0dc; --warn: #7a4f0e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #141413; --card: #1e1e1c; --text: #ececea; --muted: #a2a29b; --border: #33332f;
+            --accent: #7b9cf0; --on-accent: #0f1320; --track: #2a2a27;
+            --right: #56b4e9; --wrong: #f0894a; --warn-bg: #2d2415; --warn: #e8b865; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 40px 16px 64px; }
+  h1 { margin: 0 0 8px; font-size: 30px; line-height: 1.2; }
+  .lead { margin: 0 0 8px; font-size: 17px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  a { color: var(--accent); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 18px; }
+  .run { width: 100%; padding: 13px; border-radius: 8px; border: 0; cursor: pointer; margin: 18px 0;
+         background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; font-size: 16px; }
+  .run:disabled { opacity: .6; cursor: wait; }
+
+  .lane-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .lane-name { font-size: 19px; font-weight: 700; }
+  .lane-sub { font-size: 13px; color: var(--muted); }
+  .timer { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .bar { height: 8px; background: var(--track); border-radius: 99px; margin: 10px 0 12px; overflow: hidden; }
+  .bar div { height: 100%; width: 0; background: var(--accent); transition: width .15s; }
+  .tiles { display: grid; grid-template-columns: repeat(25, 1fr); gap: 4px; }
+  @media (max-width: 640px) { .tiles { grid-template-columns: repeat(13, 1fr); } }
+  .tile { aspect-ratio: 1; border-radius: 5px; border: 1px solid var(--border); background: var(--track);
+          font: 700 12px/1 system-ui, sans-serif; color: #fff; padding: 0; cursor: default; }
+  .tile.right { background: var(--right); border-color: var(--right); cursor: pointer; }
+  .tile.wrong { background: var(--wrong); border-color: var(--wrong); cursor: pointer; }
+  .tile.pop { animation: pop .25s ease-out; }
+  @keyframes pop { from { transform: scale(.6); } to { transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .tile.pop { animation: none; } .bar div { transition: none; } }
+  .lane-note { font-size: 14px; margin-top: 10px; min-height: 1.4em; }
+  .badge { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--accent); color: var(--on-accent); }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; margin-top: 4px; }
+  .sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 4px;
+        color: #fff; font-size: 10px; text-align: center; line-height: 14px; font-weight: 700; }
+  .warn { background: var(--warn-bg); color: var(--warn); border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
+  .warn b { display: block; }
+  .summary h2 { margin: 0 0 8px; font-size: 20px; }
+  .detail { font-size: 14px; }
+  .detail dt { font-weight: 600; margin-top: 6px; }
+  .detail dd { margin: 0; color: var(--muted); word-break: break-word; }
+</style>
+</head>
+<body>
+<main>
+  <p class="muted"><a href="/">← Try the checker yourself</a></p>
+  <h1>The speed race</h1>
+  <p class="lead">Two AIs check the same 25 chatbot answers, one at a time, side by side. Every call happens live
+    when you press start.</p>
+  <p class="muted"><b>Jev</b> is a small model built only for decisions. <b>GPT-OSS 120B</b> is OpenAI's open model,
+    running on Groq, one of the fastest AI hosts there is. The 25 answers are picked at random from our 100-case test
+    set, a mix of good answers and deliberately flawed ones. Both get the exact same answers in the same order.</p>
+  <div class="legend">
+    <span><span class="sw" style="background:var(--right)">✓</span>right call</span>
+    <span><span class="sw" style="background:var(--wrong)">✗</span>wrong call</span>
+    <span class="muted">Tap a filled tile to see that answer.</span>
+  </div>
+
+  <button class="run" id="start">Start the race</button>
+  <div id="warn" class="warn" hidden></div>
+
+  <div class="card" id="lane-jev">
+    <div class="lane-head"><div><span class="lane-name">Jev</span> <span class="badge" hidden>FINISHED FIRST</span>
+      <div class="lane-sub">TypeSafe AI's decision model, via OpenRouter</div></div>
+      <div class="timer">0.00 s</div></div>
+    <div class="bar"><div></div></div><div class="tiles"></div><div class="lane-note muted"></div>
+  </div>
+  <div class="card" id="lane-baseline">
+    <div class="lane-head"><div><span class="lane-name">GPT-OSS 120B</span> <span class="badge" hidden>FINISHED FIRST</span>
+      <div class="lane-sub">OpenAI's open model on Groq, reasoning set to “low”</div></div>
+      <div class="timer">0.00 s</div></div>
+    <div class="bar"><div></div></div><div class="tiles"></div><div class="lane-note muted"></div>
+  </div>
+
+  <div class="card summary" id="summary" hidden aria-live="polite"></div>
+  <div class="card detail" id="detail" hidden></div>
+
+  <p class="muted">Times include the network trip from our server to each provider, so they vary a little from race to
+    race. For the full 100-case comparison see the <a href="https://github.com/omkarchougule19/Jev_validation_agent">project on GitHub</a>.</p>
+</main>
+<script>
+const CONTACT = "https://github.com/omkarchougule19/Jev_validation_agent/issues";
+const CHECK_NAMES = { on_topic: "Does it answer the question?", contradiction: "Does it stick to the source?", format: "Is it in the right format?" };
+const GIVEN_LABEL = { on_topic: "Question", contradiction: "Source", format: "Required format" };
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+let cases = [], lanes = {}, es = null, ended = false;
+
+function lane(name) {
+  const root = $("#lane-" + name);
+  return { root, timer: root.querySelector(".timer"), bar: root.querySelector(".bar div"), tiles: root.querySelector(".tiles"),
+           note: root.querySelector(".lane-note"), badge: root.querySelector(".badge"),
+           started: 0, raf: 0, done: false, finalMs: null, count: 0, right: 0, results: [] };
+}
+
+function tick(l) {
+  if (l.done) return;
+  l.timer.textContent = ((performance.now() - l.started) / 1000).toFixed(2) + " s";
+  l.raf = requestAnimationFrame(() => tick(l));
+}
+
+function stop(l, ms) {
+  l.done = true; cancelAnimationFrame(l.raf);
+  if (ms != null) { l.finalMs = ms; l.timer.textContent = (ms / 1000).toFixed(2) + " s"; }
+}
+
+function warn(title, text, contact) {
+  const w = $("#warn");
+  w.innerHTML = `<b>${esc(title)}</b>${esc(text)}` + (contact ? ` <a href="${CONTACT}">Contact the developer</a> to run another race.` : "");
+  w.hidden = false;
+}
+
+function reset() {
+  ended = false; $("#warn").hidden = true; $("#summary").hidden = true; $("#detail").hidden = true;
+  lanes = { jev: lane("jev"), baseline: lane("baseline") };
+  for (const l of Object.values(lanes)) {
+    l.timer.textContent = "0.00 s"; l.bar.style.width = "0"; l.note.textContent = ""; l.badge.hidden = true;
+    l.tiles.innerHTML = "";
+  }
+}
+
+function start() {
+  reset();
+  const btn = $("#start");
+  btn.disabled = true; btn.textContent = "Starting…";
+  es = new EventSource("/api/race");
+  es.onmessage = e => handle(JSON.parse(e.data));
+  es.onerror = () => {
+    es.close();
+    if (!ended) { finishUI(); warn("The race was interrupted.", "The connection to the server dropped. Try again in a minute."); }
+  };
+}
+
+function handle(ev) {
+  if (ev.type === "blocked") {
+    ended = true; es.close(); finishUI();
+    if (ev.reason === "limit") warn("Today's free race limit is used up.", "These races run on free tiers, so only a few can run each day.", true);
+    else warn("A race just ran.", `Groq's free tier allows one race a minute. Try again in about ${ev.retry_in} seconds.`);
+    return;
+  }
+  if (ev.type === "start") {
+    cases = ev.cases;
+    $("#start").textContent = "Racing…";
+    for (const l of Object.values(lanes)) {
+      l.tiles.innerHTML = cases.map((_, i) => `<button class="tile" data-i="${i}" disabled aria-label="Answer ${i + 1}, not checked yet"></button>`).join("");
+      l.started = performance.now(); tick(l);
+    }
+    return;
+  }
+  const l = lanes[ev.lane];
+  if (ev.type === "result") {
+    l.count++; if (ev.correct) l.right++;
+    l.results[ev.i] = ev;
+    const t = l.tiles.children[ev.i];
+    t.className = "tile pop " + (ev.correct ? "right" : "wrong");
+    t.textContent = ev.correct ? "✓" : "✗";
+    t.disabled = false;
+    t.setAttribute("aria-label", `Answer ${ev.i + 1}: ${ev.correct ? "right" : "wrong"} call, ${ev.verdict}, ${ev.ms} ms`);
+    t.onclick = () => showDetail(ev.lane, ev.i);
+    l.bar.style.width = (l.count / cases.length * 100) + "%";
+    l.note.textContent = `${l.count} of ${cases.length} checked`;
+  } else if (ev.type === "lane_done") {
+    stop(l, ev.elapsed_ms);
+    const other = lanes[ev.lane === "jev" ? "baseline" : "jev"];
+    if (!other.done) l.badge.hidden = false;
+  } else if (ev.type === "limit") {
+    stop(l); l.note.textContent = `Stopped after ${l.count}: Groq's free usage limit was reached.`;
+    warn("GPT-OSS hit its free usage limit.", "Groq's free tier caps how many checks can run, so this lane stopped early.", true);
+  } else if (ev.type === "error") {
+    for (const x of ev.lane === "both" ? Object.values(lanes) : [l]) { stop(x); }
+    const who = ev.lane === "jev" ? "Jev" : ev.lane === "baseline" ? "GPT-OSS" : "The judges";
+    (ev.lane === "both" ? lanes.jev : l).note.textContent = `Stopped: ${who} couldn't be reached.`;
+    warn(`${who} couldn't be reached.`, "The AI service didn't respond or may be out of credit.", true);
+  } else if (ev.type === "end") {
+    ended = true; es.close(); finishUI(); summarize();
+  }
+}
+
+function finishUI() {
+  const btn = $("#start");
+  btn.disabled = false; btn.textContent = "Race again";
+}
+
+function summarize() {
+  const j = lanes.jev, b = lanes.baseline, n = cases.length;
+  if (j.finalMs == null && b.finalMs == null) return;
+  let head;
+  if (j.finalMs != null && b.finalMs != null) {
+    const fast = j.finalMs <= b.finalMs ? ["Jev", j, b] : ["GPT-OSS", b, j];
+    const ratio = fast[2].finalMs / fast[1].finalMs;
+    head = ratio < 1.1 ? "Practically a tie." : `${fast[0]} finished ${ratio.toFixed(1)}× faster.`;
+  } else {
+    head = j.finalMs != null ? "Only Jev finished this race." : "Only GPT-OSS finished this race.";
+  }
+  const row = (name, l) => `<li><b>${name}:</b> ${l.count} of ${n} checked` +
+    (l.finalMs != null ? ` in ${(l.finalMs / 1000).toFixed(2)} s` : "") + `, ${l.right} right calls.</li>`;
+  const bothDone = [...Array(n).keys()].filter(i => j.results[i] && b.results[i]);
+  const fair = bothDone.length < n
+    ? `<p class="muted">Accuracy is only comparable on the ${bothDone.length} answers both checked: Jev ${bothDone.filter(i => j.results[i].correct).length}, GPT-OSS ${bothDone.filter(i => b.results[i].correct).length} right.</p>` : "";
+  const s = $("#summary");
+  s.innerHTML = `<h2>${head}</h2><ul>${row("Jev", j)}${row("GPT-OSS 120B", b)}</ul>${fair}`;
+  s.hidden = false;
+}
+
+function showDetail(laneName, i) {
+  const c = cases[i], jr = lanes.jev.results[i], br = lanes.baseline.results[i];
+  const verdict = r => r ? `${r.verdict} (${r.correct ? "right" : "wrong"}, ${r.ms} ms)` : "not checked";
+  const d = $("#detail");
+  d.innerHTML = `<b>Answer ${i + 1}: ${esc(CHECK_NAMES[c.check])}</b> <span class="muted">(${esc(c.difficulty)} case, should ${c.expected === "pass" ? "pass" : "be caught"})</span>
+    <dl><dt>${esc(GIVEN_LABEL[c.check])}</dt><dd>${esc(c.given)}</dd><dt>Chatbot's answer</dt><dd>${esc(c.answer)}</dd>
+    <dt>Jev said</dt><dd>${esc(verdict(jr))}</dd><dt>GPT-OSS said</dt><dd>${esc(verdict(br))}</dd></dl>`;
+  d.hidden = false;
+  d.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+$("#start").onclick = start;
+reset();
+</script>
+</body>
+</html>

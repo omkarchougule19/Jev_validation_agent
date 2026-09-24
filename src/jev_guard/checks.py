@@ -68,6 +68,15 @@ def check_contradiction(client, context: str, answer: str) -> CheckResult:
     return _result("contradiction", contradiction_verdict(m.value), m.value, f"contradiction={m.value:.2f}", m)
 
 
+def run_jev_case(client, case: dict) -> CheckResult:
+    """One test-set case (see testset.py) through the matching Jev check."""
+    if case["check"] == "on_topic":
+        return check_on_topic(client, case["question"], case["answer"])
+    if case["check"] == "contradiction":
+        return check_contradiction(client, case["context"], case["answer"])
+    return check_format(client, case["answer"], case["expected_format"])
+
+
 def check_format(client, answer: str, expected_format: str) -> CheckResult:
     m = ask_choice(
         client, answer, f"Is this valid {expected_format}?",

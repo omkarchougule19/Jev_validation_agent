@@ -16,11 +16,15 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
+from jev_guard.baseline import make_baseline_client, run_baseline_case
+from jev_guard.checks import run_jev_case
 from jev_guard.client import make_client
+from jev_guard.demo.race import race_events
 from jev_guard.guard import guard
+from jev_guard.testset import build_testset
 
 MAX_CHARS = 4000
 RATE_LIMIT = 10  # requests per IP per minute
@@ -60,6 +64,38 @@ def _get_client():
 @app.get("/")
 def index():
     return FileResponse(_STATIC / "index.html")
+
+
+@app.get("/race")
+def race_page():
+    return FileResponse(_STATIC / "race.html")
+
+
+@app.get("/api/race")
+def race():
+    """Streams one live race (see race.py). Each lane gets its own client,
+    since the race runs both lanes on separate threads."""
+    jev_client, groq_client = make_client(), make_baseline_client()
+
+    def jev_judge(case):
+        result = run_jev_case(jev_client, case)
+        return result.verdict, result.latency_ms
+
+    def groq_judge(case):
+        verdict, call = run_baseline_case(groq_client, case)
+        return verdict, call.latency_ms
+
+    def stream():
+        try:
+            yield from race_events(jev_judge, groq_judge, all_cases=build_testset())
+        finally:
+            jev_client.close()
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.post("/api/guard")

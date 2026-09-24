@@ -8,16 +8,18 @@ Both judges are scored against the exact same pure verdict thresholds from
 checks.py, so this is a fair "same decision policy, different judge"
 comparison, not a comparison of different thresholds.
 
-Pricing note: gpt-4o-mini's price is public on OpenRouter's own /models
-listing ($0.15/M input, $0.60/M output — checked live, not assumed).
-Jev isn't listed there at all, so its $ cost below is left unverified
-rather than guessed — only token counts are reported for it.
+The baseline runs on Groq's free tier (see baseline.py), so its $ cost is
+zero; the run is paced to stay under Groq's 30 requests / 8,000 tokens per
+minute, and waits out any rate-limit response instead of failing. A run
+takes a few minutes. Jev's measured cost is about $0.0000124 per check.
 """
 
 from __future__ import annotations
 
 import json
 import statistics
+import time
+from datetime import date
 from pathlib import Path
 
 import matplotlib
@@ -27,35 +29,31 @@ import matplotlib.pyplot as plt
 import numpy as np
 from dotenv import load_dotenv
 
-from jev_guard.baseline import baseline_contradiction, baseline_format, baseline_on_topic, make_baseline_client
-from jev_guard.checks import check_contradiction, check_format, check_on_topic, contradiction_verdict, format_verdict, on_topic_verdict
+from jev_guard.baseline import BASELINE_MODEL, BaselineRateLimited, make_baseline_client, run_baseline_case
+from jev_guard.checks import run_jev_case
 from jev_guard.client import make_client
 from jev_guard.testset import build_testset
 
-BASELINE_PRICE_PER_TOKEN = {"input": 0.00000015, "output": 0.0000006}  # gpt-4o-mini, confirmed live on OpenRouter
 OUT_PATH = Path("results/report.json")
 CHART_PATH = Path("assets/comparison.png")
+MIN_SECONDS_PER_BASELINE_CALL = 2.5  # 24/min keeps under Groq's 30 req and 8K tokens per minute
+
+
+def _baseline_with_wait(client, case: dict):
+    while True:
+        try:
+            return run_baseline_case(client, case)
+        except BaselineRateLimited as exc:
+            wait = exc.retry_after or 20
+            print(f"    Groq rate limit hit, waiting {wait:.0f}s...")
+            time.sleep(wait)
 
 
 def _run_case(jev_client, baseline_client, case: dict) -> dict:
-    check = case["check"]
-    if check == "on_topic":
-        jev = check_on_topic(jev_client, case["question"], case["answer"])
-        b = baseline_on_topic(baseline_client, case["question"], case["answer"])
-        b_verdict = on_topic_verdict(b.value)
-    elif check == "contradiction":
-        jev = check_contradiction(jev_client, case["context"], case["answer"])
-        b = baseline_contradiction(baseline_client, case["context"], case["answer"])
-        b_verdict = contradiction_verdict(b.value)
-    else:  # format
-        jev = check_format(jev_client, case["answer"], case["expected_format"])
-        b = baseline_format(baseline_client, case["answer"], case["expected_format"])
-        b_verdict = format_verdict(*b.value)
-
-    b_cost = b.input_tokens * BASELINE_PRICE_PER_TOKEN["input"] + b.output_tokens * BASELINE_PRICE_PER_TOKEN["output"]
-
+    jev = run_jev_case(jev_client, case)
+    b_verdict, b = _baseline_with_wait(baseline_client, case)
     return {
-        "check": check,
+        "check": case["check"],
         "difficulty": case.get("difficulty", "easy"),
         "expected": case["expected"],
         "jev_verdict": jev.verdict,
@@ -66,7 +64,9 @@ def _run_case(jev_client, baseline_client, case: dict) -> dict:
         "baseline_latency_ms": b.latency_ms,
         "baseline_input_tokens": b.input_tokens,
         "baseline_output_tokens": b.output_tokens,
-        "baseline_cost_usd": b_cost,
+        "baseline_cost_usd": 0.0,  # Groq free tier
+        "baseline_model": BASELINE_MODEL,
+        "run_date": date.today().isoformat(),
     }
 
 
@@ -117,7 +117,7 @@ def _make_chart(rows: list[dict], out_path: Path) -> None:
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.5))
 
     ax1.bar(x - width / 2, jev_latency, width, label="Jev-Guard", color="#4C72B0")
-    ax1.bar(x + width / 2, base_latency, width, label="Baseline (gpt-4o-mini)", color="#C44E52")
+    ax1.bar(x + width / 2, base_latency, width, label=f"Baseline ({BASELINE_MODEL.split('/')[-1]})", color="#C44E52")
     ax1.set_ylabel("Median latency (ms)")
     ax1.set_title("Latency by check")
     ax1.set_xticks(x)
@@ -125,7 +125,7 @@ def _make_chart(rows: list[dict], out_path: Path) -> None:
     ax1.legend()
 
     ax2.bar(x - width / 2, jev_catch, width, label="Jev-Guard", color="#4C72B0")
-    ax2.bar(x + width / 2, base_catch, width, label="Baseline (gpt-4o-mini)", color="#C44E52")
+    ax2.bar(x + width / 2, base_catch, width, label=f"Baseline ({BASELINE_MODEL.split('/')[-1]})", color="#C44E52")
     ax2.set_ylabel("Catch rate (%)")
     ax2.set_ylim(0, 105)
     ax2.set_title("Catch rate by check")
@@ -145,11 +145,13 @@ def main() -> None:
     jev_client = make_client()
     baseline_client = make_baseline_client()
 
-    print(f"Running {len(testset)} test cases through Jev-Guard and the baseline judge...")
+    print(f"Running {len(testset)} test cases through Jev-Guard and the baseline judge ({BASELINE_MODEL} on Groq)...")
     rows = []
     try:
         for i, case in enumerate(testset, 1):
+            started = time.monotonic()
             rows.append(_run_case(jev_client, baseline_client, case))
+            time.sleep(max(0.0, MIN_SECONDS_PER_BASELINE_CALL - (time.monotonic() - started)))
             print(f"  [{i}/{len(testset)}] {case['check']} ({case.get('difficulty', 'easy')}): jev={rows[-1]['jev_verdict']} baseline={rows[-1]['baseline_verdict']} expected={case['expected']}")
     finally:
         jev_client.close()
@@ -165,11 +167,10 @@ def main() -> None:
         base_scores = _score(check_rows, "baseline_verdict")
         jev_latency = statistics.median(r["jev_latency_ms"] for r in check_rows)
         base_latency = statistics.median(r["baseline_latency_ms"] for r in check_rows)
-        base_cost = statistics.mean(r["baseline_cost_usd"] for r in check_rows)
 
         print(f"\n{check}:")
         print(f"  Jev-Guard : catch={jev_scores['catch_rate']:.0%}  false-alarm={jev_scores['false_alarm_rate']:.0%}  median latency={jev_latency:.0f}ms")
-        print(f"  Baseline  : catch={base_scores['catch_rate']:.0%}  false-alarm={base_scores['false_alarm_rate']:.0%}  median latency={base_latency:.0f}ms  avg cost=${base_cost:.6f}/check")
+        print(f"  Baseline  : catch={base_scores['catch_rate']:.0%}  false-alarm={base_scores['false_alarm_rate']:.0%}  median latency={base_latency:.0f}ms")
 
         for difficulty in ("easy", "hard"):
             diff_rows = [r for r in check_rows if r["difficulty"] == difficulty and r["expected"] == "block"]

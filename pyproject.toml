@@ -14,7 +14,7 @@ dependencies = ["typesafe-sdk"]
 
 [project.optional-dependencies]
 report = ["openai", "python-dotenv", "matplotlib", "numpy"]
-demo = ["fastapi", "uvicorn", "python-dotenv"]
+demo = ["fastapi", "uvicorn", "python-dotenv", "openai"]
 dev = ["pytest", "httpx"]
 
 [project.urls]
