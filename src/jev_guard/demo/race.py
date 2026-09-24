@@ -30,11 +30,11 @@ _state = {"busy": False, "next_allowed": 0.0, "day": None, "count": 0}
 
 
 def jev_prices() -> dict:
-    return {k: v * 1e6 for k, v in client.PRICE_PER_TOKEN.items()}  # $ per 1M tokens
+    return {k: round(v * 1e6, 4) for k, v in client.PRICE_PER_TOKEN.items()}  # $ per 1M tokens
 
 
 def baseline_prices() -> dict:
-    return {k: v * 1e6 for k, v in baseline.PRICE_PER_TOKEN.items()}
+    return {k: round(v * 1e6, 4) for k, v in baseline.PRICE_PER_TOKEN.items()}
 
 
 def _sse(event: dict) -> str:
