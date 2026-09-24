@@ -4,84 +4,163 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Jev-Guard Demo</title>
+<meta name="description" content="Catch bad AI chatbot answers before users see them, in about a fifth of a second.">
 <style>
   :root {
-    --bg: #f7f7f5; --card: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --border: #e2e2dc;
-    --accent: #2f5bd3; --pass: #1f8a4c; --flag: #b7791f; --block: #c53030;
+    --bg: #f7f7f5; --card: #ffffff; --text: #1d1d1b; --muted: #65655f; --border: #e2e2dc;
+    --accent: #2f5bd3; --accent-soft: #e8eefc; --on-accent: #ffffff;
+    --pass: #1f8a4c; --pass-soft: #e5f4ea; --flag: #9a6412; --flag-soft: #fbf0dc; --block: #c53030; --block-soft: #fbe6e6;
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #141413; --card: #1e1e1c; --text: #ececea; --muted: #9a9a94; --border: #33332f;
-            --accent: #7b9cf0; --pass: #4cc17e; --flag: #e0a948; --block: #f07070; }
+    :root { --bg: #141413; --card: #1e1e1c; --text: #ececea; --muted: #a2a29b; --border: #33332f;
+            --accent: #7b9cf0; --accent-soft: #1f2740; --on-accent: #0f1320;
+            --pass: #4cc17e; --pass-soft: #16291e; --flag: #e0a948; --flag-soft: #2d2415; --block: #f07070; --block-soft: #331a1a; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text);
-         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  main { max-width: 880px; margin: 0 auto; padding: 32px 16px 64px; }
-  h1 { margin: 0 0 4px; font-size: 26px; }
-  .sub { color: var(--muted); margin: 0 0 24px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
-  label { display: block; font-weight: 600; margin: 14px 0 4px; font-size: 14px; }
-  label span { font-weight: 400; color: var(--muted); }
-  textarea, input { width: 100%; padding: 9px 10px; border: 1px solid var(--border); border-radius: 6px;
-                    background: var(--bg); color: var(--text); font: inherit; resize: vertical; }
-  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
-  button { font: inherit; border-radius: 6px; padding: 8px 14px; cursor: pointer; border: 1px solid var(--border);
-           background: var(--card); color: var(--text); }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-  button:disabled { opacity: .6; cursor: wait; }
-  .examples { color: var(--muted); font-size: 13px; }
-  .verdict { font-size: 22px; font-weight: 700; text-transform: uppercase; }
-  .pass { color: var(--pass); } .flag { color: var(--flag); } .block { color: var(--block); }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+         font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 40px 16px 64px; }
+  h1 { margin: 0 0 8px; font-size: 30px; line-height: 1.2; }
+  h2 { margin: 0 0 12px; font-size: 19px; }
+  .lead { margin: 0 0 12px; font-size: 17px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 22px; margin-bottom: 20px; }
+  .how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0 28px; }
+  .how div { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; font-size: 14px; }
+  .how b { display: block; font-size: 15px; margin-bottom: 2px; }
+  @media (max-width: 640px) { .how { grid-template-columns: 1fr; } }
+
+  .examples { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 8px; }
+  @media (max-width: 640px) { .examples { grid-template-columns: 1fr; } }
+  .ex { text-align: left; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border);
+        background: var(--bg); color: var(--text); font: inherit; cursor: pointer; }
+  .ex:hover { border-color: var(--accent); }
+  .ex.active { border-color: var(--accent); background: var(--accent-soft); }
+  .ex b { display: block; font-size: 15px; }
+  .ex span { font-size: 13px; color: var(--muted); }
+
+  label { display: block; font-weight: 600; margin: 16px 0 2px; font-size: 15px; }
+  .hint { display: block; font-weight: 400; color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+  textarea, input { width: 100%; padding: 10px 11px; border: 1px solid var(--border); border-radius: 8px;
+                    background: var(--bg); color: var(--text); font: inherit; font-size: 15px; resize: vertical; }
+  textarea:focus, input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .run { margin-top: 20px; width: 100%; padding: 13px; border-radius: 8px; border: 0; cursor: pointer;
+         background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; font-size: 16px; }
+  .run:disabled { opacity: .65; cursor: wait; }
+
+  .verdict { border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
+  .verdict .big { font-size: 22px; font-weight: 700; }
+  .v-pass { background: var(--pass-soft); } .v-pass .big { color: var(--pass); }
+  .v-flag { background: var(--flag-soft); } .v-flag .big { color: var(--flag); }
+  .v-block { background: var(--block-soft); } .v-block .big { color: var(--block); }
+  .check { display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); }
+  .pill { flex: none; font-size: 12px; font-weight: 700; text-transform: uppercase; border-radius: 999px;
+          padding: 3px 10px; height: fit-content; margin-top: 2px; }
+  .p-pass { color: var(--pass); background: var(--pass-soft); }
+  .p-flag { color: var(--flag); background: var(--flag-soft); }
+  .p-block { color: var(--block); background: var(--block-soft); }
+  .check b { display: block; }
+  .error { color: var(--block); }
+
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 14px; margin: 4px 0 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px; }
   th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
   th { color: var(--muted); font-weight: 600; }
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   .table-wrap { overflow-x: auto; }
-  .error { color: var(--block); }
-  .muted { color: var(--muted); font-size: 13px; }
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 4px 0 8px; }
+  .stat-row div { background: var(--bg); border-radius: 10px; padding: 12px; }
+  .stat-row b { display: block; font-size: 22px; }
+  @media (max-width: 640px) { .stat-row { grid-template-columns: 1fr; } }
+  details { margin-top: 10px; }
+  summary { cursor: pointer; color: var(--accent); font-size: 14px; }
   a { color: var(--accent); }
+  footer { text-align: center; }
 </style>
 </head>
 <body>
 <main>
-  <h1>Jev-Guard</h1>
-  <p class="sub">Checks an LLM answer with <b>Jev</b>, a small decision model, instead of a second full LLM.
-    Fill in only the fields for the checks you want to run.</p>
+  <h1>Catch bad chatbot answers before your users see them</h1>
+  <p class="lead">AI chatbots sometimes dodge the question, get facts wrong, or return broken data.
+    Jev-Guard checks each answer in about a fifth of a second, fast enough to run on every single reply.</p>
+  <p class="muted">The usual approach is to have a second large AI (like GPT) grade the first one, which is slow and costs
+    money on every message. Jev-Guard uses <b>Jev</b>, a small AI model built only for yes/no and pick-one
+    decisions, to do the same job.</p>
+
+  <div class="how">
+    <div><b>1. Pick an example</b>or paste in your own chatbot answer.</div>
+    <div><b>2. Click “Check this answer”</b>Jev-Guard runs one quick check per field you filled in.</div>
+    <div><b>3. Read the verdict</b>Show it, have a person look, or block it.</div>
+  </div>
 
   <div class="card">
-    <label for="answer">LLM answer <span>(required)</span></label>
-    <textarea id="answer" rows="3"></textarea>
-    <label for="question">Question <span>(runs the on-topic check)</span></label>
-    <textarea id="question" rows="2"></textarea>
-    <label for="context">Source context <span>(runs the contradiction check)</span></label>
-    <textarea id="context" rows="3"></textarea>
-    <label for="format">Expected format <span>(runs the format check, e.g. JSON)</span></label>
-    <input id="format" type="text">
-    <div class="row">
-      <button class="primary" id="run">Run checks</button>
-      <span class="examples">Try:</span>
-      <button data-ex="good">Good answer</button>
-      <button data-ex="offtopic">Off-topic</button>
-      <button data-ex="contra">Subtle contradiction</button>
-      <button data-ex="json">Not JSON</button>
+    <h2>Try an example</h2>
+    <div class="examples">
+      <button class="ex" data-ex="good"><b>✅ A correct answer</b><span>On topic and matches the source. Should pass.</span></button>
+      <button class="ex" data-ex="offtopic"><b>🙈 Dodges the question</b><span>Talks about Paris, never gives the height. Should be blocked.</span></button>
+      <button class="ex" data-ex="contra"><b>📅 Wrong fact</b><span>Says 1887, but the source says 1889. Should be blocked.</span></button>
+      <button class="ex" data-ex="json"><b>🧩 Broken data</b><span>An app asked for JSON and got plain text. Should be blocked.</span></button>
     </div>
+
+    <label for="answer">The chatbot's answer
+      <span class="hint">Required. This is the text being checked.</span></label>
+    <textarea id="answer" rows="3" placeholder="e.g. The Eiffel Tower is 330 metres tall."></textarea>
+
+    <label for="question">What the user asked
+      <span class="hint">Optional. Fill in to check the answer actually addresses the question.</span></label>
+    <textarea id="question" rows="2" placeholder="e.g. How tall is the Eiffel Tower?"></textarea>
+
+    <label for="context">Source the answer should stick to
+      <span class="hint">Optional. E.g. a help-center article the bot was given. Fill in to check the answer doesn't contradict it.</span></label>
+    <textarea id="context" rows="3" placeholder="e.g. The Eiffel Tower in Paris stands 330 metres tall."></textarea>
+
+    <label for="format">Format the answer must be in
+      <span class="hint">Optional. E.g. JSON, when a program (not a person) reads the answer.</span></label>
+    <input id="format" type="text" placeholder="e.g. JSON">
+
+    <button class="run" id="run">Check this answer</button>
   </div>
 
-  <div class="card" id="out" hidden></div>
+  <div class="card" id="out" hidden aria-live="polite"></div>
 
   <div class="card">
-    <b>Measured on a 100-case test set</b> <span class="muted">(Jev vs. gpt-4o-mini as the judge, same thresholds)</span>
-    <div class="table-wrap"><table>
-      <tr><th>Check</th><th class="num">Jev catch rate</th><th class="num">Baseline catch rate</th>
-          <th class="num">Jev median latency</th><th class="num">Baseline median latency</th></tr>
-      <tr><td>On-topic</td><td class="num">100%</td><td class="num">100%</td><td class="num">210 ms</td><td class="num">1,027 ms</td></tr>
-      <tr><td>Contradicts source</td><td class="num">100%</td><td class="num">100%</td><td class="num">217 ms</td><td class="num">614 ms</td></tr>
-      <tr><td>Right format</td><td class="num">80%</td><td class="num">80%</td><td class="num">192 ms</td><td class="num">748 ms</td></tr>
-    </table></div>
-    <p class="muted">No false alarms from either judge on any check. Format is the weakest check: small syntax slips
-      (a trailing comma, a missing brace) can get through, so pair it with a real parser for strict JSON.
-      <a href="https://github.com/omkarchougule19/Jev_validation_agent">Source and methodology</a></p>
+    <h2>What the verdicts mean</h2>
+    <div class="legend">
+      <span><span class="pill p-pass">pass</span> Looks fine, safe to show.</span>
+      <span><span class="pill p-flag">flag</span> Unsure, worth a human look.</span>
+      <span><span class="pill p-block">block</span> Problem found, don't show it.</span>
+    </div>
+    <p class="muted" style="margin-bottom:0">If you run several checks, the overall verdict is the worst one.</p>
   </div>
+
+  <div class="card">
+    <h2>Does it actually work?</h2>
+    <p style="margin-top:0">We tested it on 100 made-up answers, some good and some deliberately flawed (including subtle ones
+      like a transposed digit), and compared it with GPT-4o-mini doing the same checks.</p>
+    <div class="stat-row">
+      <div><b>Same accuracy</b><span class="muted">as GPT-4o-mini on all three checks</span></div>
+      <div><b>~3× faster</b><span class="muted">about 0.2 s vs. 0.6 to 1 s per check</span></div>
+      <div><b>0 false alarms</b><span class="muted">no good answer was wrongly flagged</span></div>
+    </div>
+    <details>
+      <summary>See the full numbers</summary>
+      <p class="muted">“Caught” is the share of flawed answers that each checker stopped.</p>
+      <div class="table-wrap"><table>
+        <tr><th>Check</th><th class="num">Jev caught</th><th class="num">GPT-4o-mini caught</th>
+            <th class="num">Jev time</th><th class="num">GPT-4o-mini time</th></tr>
+        <tr><td>Answers the question</td><td class="num">100%</td><td class="num">100%</td><td class="num">210 ms</td><td class="num">1,027 ms</td></tr>
+        <tr><td>Sticks to the source</td><td class="num">100%</td><td class="num">100%</td><td class="num">217 ms</td><td class="num">614 ms</td></tr>
+        <tr><td>Right format</td><td class="num">80%</td><td class="num">80%</td><td class="num">192 ms</td><td class="num">748 ms</td></tr>
+      </table></div>
+      <p class="muted">The format check is the weakest: small slips like a trailing comma or a missing bracket can
+        get through. For strict JSON, also run a real parser.</p>
+    </details>
+  </div>
+
+  <footer class="muted">
+    Open source: <a href="https://github.com/omkarchougule19/Jev_validation_agent">code, test set, and methodology on GitHub</a>.
+    Hosted on a free server, so the first check after a quiet spell can take up to a minute.
+  </footer>
 </main>
 <script>
 const EXAMPLES = {
@@ -89,23 +168,48 @@ const EXAMPLES = {
           context: "The Eiffel Tower in Paris stands 330 metres (1,083 ft) tall.", format: "" },
   offtopic: { answer: "Paris has a lovely café culture and many museums.", question: "How tall is the Eiffel Tower?",
               context: "", format: "" },
-  contra: { answer: "The Eiffel Tower was completed in 1887.", question: "",
+  contra: { answer: "The Eiffel Tower was completed in 1887.", question: "When was the Eiffel Tower completed?",
             context: "The Eiffel Tower was completed in 1889 for the World's Fair.", format: "" },
   json: { answer: "name: Ada, age: 36", question: "", context: "", format: "JSON" },
 };
+const OVERALL = {
+  pass: "Looks good. This answer is safe to show.",
+  flag: "Worth a second look. Jev-Guard isn't sure about this one.",
+  block: "Problem found. Don't show this answer.",
+};
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const pct = x => Math.round(x * 100) + "%";
+
+function explain(r) {
+  if (r.raw === null) return { title: checkName(r.name), text: "This check couldn't run (the AI service didn't respond), so it's flagged for a person to review." };
+  if (r.name === "on_topic") return { title: "Does it answer the question?",
+    text: `Jev thinks there's a ${pct(r.raw)} chance the answer actually addresses what was asked.` };
+  if (r.name === "contradiction") return { title: "Does it stick to the source?",
+    text: r.raw <= 0.3 ? "Nothing in the answer conflicts with the source."
+        : `The answer conflicts with the source (conflict score ${r.raw.toFixed(2)}, where 0 = consistent and 1 = flat contradiction).` };
+  const label = r.detail.split(" ")[0];
+  return { title: "Is it in the right format?",
+    text: label === "valid" ? `Judged to be valid ${esc($("format").value || "format")} (${pct(r.raw)} confident).`
+                            : `Judged not to be valid ${esc($("format").value || "format")}.` };
+}
+const checkName = n => ({ on_topic: "Does it answer the question?", contradiction: "Does it stick to the source?", format: "Is it in the right format?" }[n] || n);
 
 document.querySelectorAll("[data-ex]").forEach(b => b.onclick = () => {
   const ex = EXAMPLES[b.dataset.ex];
   $("answer").value = ex.answer; $("question").value = ex.question;
   $("context").value = ex.context; $("format").value = ex.format;
+  document.querySelectorAll(".ex").forEach(e => e.classList.toggle("active", e === b));
+  $("run").focus();
 });
 
 $("run").onclick = async () => {
   const out = $("out"), btn = $("run");
   btn.disabled = true; btn.textContent = "Checking…";
-  out.hidden = false; out.innerHTML = '<span class="muted">Running checks…</span>';
+  out.hidden = false; out.innerHTML = '<span class="muted">Checking the answer…</span>';
+  const slow = setTimeout(() => {
+    out.innerHTML = '<span class="muted">Waking up the free server. The first check can take up to a minute, after that it\'s fast.</span>';
+  }, 4000);
   try {
     const res = await fetch("/api/guard", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -114,20 +218,24 @@ $("run").onclick = async () => {
     });
     const data = await res.json();
     if (!res.ok) {
-      const msg = typeof data.detail === "string" ? data.detail : "Invalid input (the answer is required, fields max 4,000 characters).";
+      let msg = typeof data.detail === "string" ? data.detail : "Please add the chatbot's answer (up to 4,000 characters).";
+      if (msg.startsWith("Fill in at least one")) msg = "Fill in at least one optional field (question, source, or format) so there's something to check the answer against.";
       out.innerHTML = `<span class="error">${esc(msg)}</span>`;
       return;
     }
-    const rows = data.results.map(r => `<tr><td>${esc(r.name)}</td>
-      <td class="${esc(r.verdict)}"><b>${esc(r.verdict)}</b></td><td>${esc(r.detail)}</td>
-      <td class="num">${r.latency_ms} ms</td></tr>`).join("");
-    out.innerHTML = `<div>Overall: <span class="verdict ${esc(data.overall)}">${esc(data.overall)}</span>
-      <span class="muted">&nbsp;in ${data.total_ms} ms total</span></div>
-      <div class="table-wrap"><table><tr><th>Check</th><th>Verdict</th><th>Detail</th><th class="num">Latency</th></tr>${rows}</table></div>`;
+    const checks = data.results.map(r => {
+      const e = explain(r);
+      return `<div class="check"><span class="pill p-${esc(r.verdict)}">${esc(r.verdict)}</span>
+        <div><b>${e.title}</b>${e.text} <span class="muted">(${r.latency_ms} ms)</span></div></div>`;
+    }).join("");
+    out.innerHTML = `<div class="verdict v-${esc(data.overall)}"><div class="big">${esc(data.overall.toUpperCase())}</div>
+      ${OVERALL[data.overall]} <span class="muted">Checked in ${(data.total_ms / 1000).toFixed(2)} s.</span></div>${checks}`;
+    out.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch (e) {
-    out.innerHTML = `<span class="error">Request failed: ${esc(e.message)}</span>`;
+    out.innerHTML = `<span class="error">Couldn't reach the server: ${esc(e.message)}</span>`;
   } finally {
-    btn.disabled = false; btn.textContent = "Run checks";
+    clearTimeout(slow);
+    btn.disabled = false; btn.textContent = "Check this answer";
   }
 };
 </script>
